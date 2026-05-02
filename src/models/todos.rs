@@ -1,9 +1,9 @@
-use crate::models::_entities::boards::Column;
+use crate::models::_entities::todos::Column;
 
-pub use super::_entities::boards::{ActiveModel, Entity, Model};
+pub use super::_entities::todos::{ActiveModel, Entity, Model};
 use loco_rs::model::{ModelError, ModelResult};
 use sea_orm::{entity::prelude::*, ActiveValue::Set};
-pub type Boards = Entity;
+pub type Todos = Entity;
 
 #[async_trait::async_trait]
 impl ActiveModelBehavior for ActiveModel {
@@ -13,12 +13,11 @@ impl ActiveModelBehavior for ActiveModel {
     {
         if !insert && self.updated_at.is_unchanged() {
             let mut this = self;
-            this.updated_at = Set(chrono::Utc::now().into());
+            this.updated_at = sea_orm::ActiveValue::Set(chrono::Utc::now().into());
             Ok(this)
         } else if insert {
             let mut this = self;
             this.pid = Set(Uuid::new_v4());
-
             Ok(this)
         } else {
             Ok(self)

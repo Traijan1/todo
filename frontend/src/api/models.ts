@@ -13,20 +13,20 @@ export interface Project {
   updated_at: string;
 }
 
-export interface Board {
-  pid: string;
-  project_id: number; // Internal ID for relations, though usually we fetch by project PID
-  title: string;
-  created_at: string;
-  updated_at: string;
-}
-
 export interface Todo {
   id: number;
   pid: string;
   title: string;
-  content?: string;
-  done: boolean;
+  details?: string;
+  board_id: number;
   created_at: string;
   updated_at: string;
+}
+
+export interface Board {
+  pid: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+  todos: Todo[];
 }

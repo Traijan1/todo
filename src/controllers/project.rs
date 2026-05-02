@@ -72,7 +72,6 @@ pub async fn add(
 
     tracing::debug!("Project inserted: id={}", item.id);
 
-    // Create the many-to-many link
     let project_user = users_projects::ActiveModel {
         user_id: Set(user.id),
         project_id: Set(item.id),

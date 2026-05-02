@@ -3,7 +3,7 @@ import LocoSplash from "../LocoSplash.vue";
 import Card from "../components/Card.vue";
 import DraggableDemo from "../components/DraggableDemo.vue";
 import { useAuthStore } from "../stores/auth";
-import ProjectIndexView from "./projects/ProjectIndexView.vue";
+import ProjectIndex from "./projects/Index.vue";
 
 const auth = useAuthStore();
 </script>
@@ -22,7 +22,7 @@ const auth = useAuthStore();
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
       <Card title="Projects">
-        <ProjectIndexView />
+        <ProjectIndex />
       </Card>
 
       <Card title="System Status">

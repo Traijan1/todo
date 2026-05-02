@@ -21,11 +21,12 @@ export const useTodoStore = defineStore("todos", () => {
     }
   }
 
-  async function createTodo(boardPid: string, payload: { title: string; content?: string }) {
+  async function createTodo(boardPid: string, payload: { title: string; details?: string }) {
     loading.value = true;
     error.value = null;
     try {
       const response = await api.post(`/boards/${boardPid}/todos`, payload);
+      console.log(response);
       todos.value.push(response.data);
       return response.data;
     } catch (err: any) {
@@ -36,15 +37,40 @@ export const useTodoStore = defineStore("todos", () => {
     }
   }
 
-  async function toggleTodo(todoPid: string) {
+  async function updateTodo(id: number, payload: { title?: string; details?: string | null; board_pid?: string }) {
+    loading.value = true;
+    error.value = null;
     try {
-      const todo = todos.value.find((t) => t.pid === todoPid);
-      if (todo) {
-        const response = await api.patch(`/todos/${todoPid}/toggle`);
-        todo.done = response.data.done;
+      const response = await api.patch(`/todos/${id}`, payload);
+      const index = todos.value.findIndex((t) => t.id === id);
+      if (index !== -1) {
+        todos.value[index] = response.data;
       }
+      return response.data;
     } catch (err: any) {
-      error.value = err.response?.data?.description || "Failed to toggle todo";
+      error.value = err.response?.data?.description || "Failed to update todo";
+      throw err;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  async function deleteTodo(pid: string) {
+    loading.value = true;
+    error.value = null;
+
+    try {
+      const response = await api.delete(`/todos/${pid}`);
+      todos.value = todos.value.filter((todo) => todo.pid !== pid);
+
+      console.log("adasd");
+
+      return response.data;
+    } catch (err: any) {
+      error.value = err.response?.data?.description || "Failed to delete todo";
+      throw err;
+    } finally {
+      loading.value = false;
     }
   }
 
@@ -54,6 +80,7 @@ export const useTodoStore = defineStore("todos", () => {
     error,
     fetchTodos,
     createTodo,
-    toggleTodo,
+    updateTodo,
+    deleteTodo,
   };
 });

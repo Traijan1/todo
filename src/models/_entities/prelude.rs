@@ -2,5 +2,6 @@
 
 pub use super::boards::Entity as Boards;
 pub use super::projects::Entity as Projects;
+pub use super::todos::Entity as Todos;
 pub use super::users::Entity as Users;
 pub use super::users_projects::Entity as UsersProjects;

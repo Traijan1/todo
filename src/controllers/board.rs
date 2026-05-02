@@ -6,8 +6,15 @@ use serde::{Deserialize, Serialize};
 
 use crate::models::_entities::{
     boards::{self, ActiveModel, Entity, Model},
-    projects,
+    projects, todos,
 };
+
+#[derive(Serialize)]
+pub struct BoardResponse {
+    #[serde(flatten)]
+    pub board: boards::Model,
+    pub todos: Vec<todos::Model>,
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Params {
@@ -36,12 +43,18 @@ pub async fn list(
         .await?
         .ok_or_else(|| Error::NotFound)?;
 
-    format::json(
-        Entity::find()
-            .filter(boards::Column::ProjectId.eq(project.id))
-            .all(&ctx.db)
-            .await?,
-    )
+    let boards_with_todos = Entity::find()
+        .filter(boards::Column::ProjectId.eq(project.id))
+        .find_with_related(todos::Entity)
+        .all(&ctx.db)
+        .await?;
+
+    let response: Vec<BoardResponse> = boards_with_todos
+        .into_iter()
+        .map(|(board, todos)| BoardResponse { board, todos })
+        .collect();
+
+    format::json(response)
 }
 
 #[debug_handler]

@@ -4,7 +4,7 @@ use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize)]
-#[sea_orm(table_name = "boards")]
+#[sea_orm(table_name = "todos")]
 pub struct Model {
     pub created_at: DateTimeWithTimeZone,
     pub updated_at: DateTimeWithTimeZone,
@@ -13,31 +13,25 @@ pub struct Model {
     #[sea_orm(unique)]
     pub pid: Uuid,
     pub title: String,
-    pub project_id: i32,
+    #[sea_orm(column_type = "Text", nullable)]
+    pub details: Option<String>,
+    pub board_id: i32,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
     #[sea_orm(
-        belongs_to = "super::projects::Entity",
-        from = "Column::ProjectId",
-        to = "super::projects::Column::Id",
+        belongs_to = "super::boards::Entity",
+        from = "Column::BoardId",
+        to = "super::boards::Column::Id",
         on_update = "Cascade",
         on_delete = "Cascade"
     )]
-    Projects,
-    #[sea_orm(has_many = "super::todos::Entity")]
-    Todos,
+    Boards,
 }
 
-impl Related<super::projects::Entity> for Entity {
+impl Related<super::boards::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::Projects.def()
-    }
-}
-
-impl Related<super::todos::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Todos.def()
+        Relation::Boards.def()
     }
 }

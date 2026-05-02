@@ -2,9 +2,9 @@ import { createRouter, createWebHistory } from "vue-router";
 import HomeView from "../views/HomeView.vue";
 import RegisterView from "../views/RegisterView.vue";
 import LoginView from "../views/LoginView.vue";
-import NewProjectView from "../views/projects/NewProjectView.vue";
-import ProjectIndexView from "../views/projects/ProjectIndexView.vue";
-import SingleProjectView from "../views/projects/SingleProjectView.vue";
+import ProjectCreate from "../views/projects/Create.vue";
+import ProjectIndex from "../views/projects/Index.vue";
+import ProjectShow from "../views/projects/Show.vue";
 
 const router = createRouter({
   history: createWebHistory(),
@@ -32,17 +32,17 @@ const router = createRouter({
     {
       path: "/projects",
       name: "projects",
-      component: ProjectIndexView,
+      component: ProjectIndex,
     },
     {
       path: "/projects/new",
       name: "project-new",
-      component: NewProjectView,
+      component: ProjectCreate,
     },
     {
       path: "/projects/:pid",
       name: "project-detail",
-      component: SingleProjectView,
+      component: ProjectShow,
       props: true,
     },
   ],
