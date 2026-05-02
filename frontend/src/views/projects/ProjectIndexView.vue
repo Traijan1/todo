@@ -1,6 +1,5 @@
-import { useAuthStore } from '../../stores/auth';
 <script setup lang="ts">
-import { onMounted, Ref, ref } from "vue";
+import { onMounted } from "vue";
 import { useProjectStore } from "../../stores/projects";
 import { storeToRefs } from "pinia";
 
@@ -14,6 +13,8 @@ onMounted(async () => {
 
 <template>
   <div>
-    <div v-for="project in projects" class="text-brand-primary">{{ project.title }}</div>
+    <div v-for="project in projects" :key="project.pid" class="text-brand-primary">
+      <RouterLink :to="{ name: 'project-detail', params: { pid: project.pid } }">{{ project.title }}</RouterLink>
+    </div>
   </div>
 </template>

@@ -4,17 +4,18 @@
 use loco_rs::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::models::_entities::boards::{ActiveModel, Entity, Model};
+use crate::models::_entities::{
+    boards::{self, ActiveModel, Entity, Model},
+    projects,
+};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Params {
-    pub pid: Uuid,
     pub title: String,
 }
 
 impl Params {
     fn update(&self, item: &mut ActiveModel) {
-        item.pid = Set(self.pid);
         item.title = Set(self.title.clone());
     }
 }
@@ -25,13 +26,39 @@ async fn load_item(ctx: &AppContext, id: i32) -> Result<Model> {
 }
 
 #[debug_handler]
-pub async fn list(State(ctx): State<AppContext>) -> Result<Response> {
-    format::json(Entity::find().all(&ctx.db).await?)
+pub async fn list(
+    State(ctx): State<AppContext>,
+    Path(project_pid): Path<Uuid>,
+) -> Result<Response> {
+    let project = projects::Entity::find()
+        .filter(projects::Column::Pid.eq(project_pid))
+        .one(&ctx.db)
+        .await?
+        .ok_or_else(|| Error::NotFound)?;
+
+    format::json(
+        Entity::find()
+            .filter(boards::Column::ProjectId.eq(project.id))
+            .all(&ctx.db)
+            .await?,
+    )
 }
 
 #[debug_handler]
-pub async fn add(State(ctx): State<AppContext>, Json(params): Json<Params>) -> Result<Response> {
+pub async fn add(
+    State(ctx): State<AppContext>,
+    Path(project_pid): Path<Uuid>,
+    Json(params): Json<Params>,
+) -> Result<Response> {
+    let project = projects::Entity::find()
+        .filter(projects::Column::Pid.eq(project_pid))
+        .one(&ctx.db)
+        .await?
+        .ok_or_else(|| Error::NotFound)?;
+
     let mut item = ActiveModel {
+        pid: Set(Uuid::new_v4()),
+        project_id: Set(project.id),
         ..Default::default()
     };
     params.update(&mut item);
@@ -65,11 +92,11 @@ pub async fn get_one(Path(id): Path<i32>, State(ctx): State<AppContext>) -> Resu
 
 pub fn routes() -> Routes {
     Routes::new()
-        .prefix("api/boards/")
-        .add("/", get(list))
-        .add("/", post(add))
-        .add("{id}", get(get_one))
-        .add("{id}", delete(remove))
-        .add("{id}", put(update))
-        .add("{id}", patch(update))
+        .prefix("api")
+        .add("/projects/{project_pid}/boards", get(list))
+        .add("/projects/{project_pid}/boards", post(add))
+        .add("/boards/{id}", get(get_one))
+        .add("/boards/{id}", delete(remove))
+        .add("/boards/{id}", put(update))
+        .add("/boards/{id}", patch(update))
 }

@@ -4,6 +4,7 @@ import RegisterView from "../views/RegisterView.vue";
 import LoginView from "../views/LoginView.vue";
 import NewProjectView from "../views/projects/NewProjectView.vue";
 import ProjectIndexView from "../views/projects/ProjectIndexView.vue";
+import SingleProjectView from "../views/projects/SingleProjectView.vue";
 
 const router = createRouter({
   history: createWebHistory(),
@@ -37,6 +38,12 @@ const router = createRouter({
       path: "/projects/new",
       name: "project-new",
       component: NewProjectView,
+    },
+    {
+      path: "/projects/:pid",
+      name: "project-detail",
+      component: SingleProjectView,
+      props: true,
     },
   ],
 });

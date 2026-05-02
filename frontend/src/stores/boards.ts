@@ -14,6 +14,7 @@ export const useBoardStore = defineStore("boards", () => {
     try {
       // Assuming nested routes or query params for project boards
       const response = await api.get(`/projects/${projectPid}/boards`);
+      console.log(response);
       boards.value = response.data;
     } catch (err: any) {
       error.value = err.response?.data?.description || "Failed to fetch boards";

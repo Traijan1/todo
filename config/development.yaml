@@ -27,7 +27,7 @@ server:
     cors:
       enable: true
       allow_origins:
-        - http://localhost:3000
+        - "*"
     fallback:
       enable: false
     static:
