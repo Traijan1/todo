@@ -2,6 +2,7 @@
 
 pub mod prelude;
 
+pub mod boards;
 pub mod projects;
 pub mod users;
 pub mod users_projects;

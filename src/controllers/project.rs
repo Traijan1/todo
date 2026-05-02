@@ -47,7 +47,15 @@ pub async fn add(
 ) -> Result<Response> {
     //ValidatorTrait::validate(&params)?;
 
-    let user = users::Model::find_by_pid(&ctx.db, &auth.claims.pid).await?;
+    let user = users::Model::find_by_pid(&ctx.db, &auth.claims.pid)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to find user by pid: {:?}", e);
+            e
+        })?;
+
+    tracing::debug!("User found: id={}", user.id);
+
     let txn = ctx.db.begin().await?;
 
     let mut item = ActiveModel {
@@ -55,7 +63,14 @@ pub async fn add(
     };
 
     params.update(&mut item);
-    let item = item.insert(&txn).await?;
+
+    tracing::debug!("Inserting project...");
+    let item = item.insert(&txn).await.map_err(|e| {
+        tracing::error!("Failed to insert project: {:?}", e);
+        e
+    })?;
+
+    tracing::debug!("Project inserted: id={}", item.id);
 
     // Create the many-to-many link
     let project_user = users_projects::ActiveModel {
@@ -64,9 +79,14 @@ pub async fn add(
         ..Default::default()
     };
 
-    project_user.insert(&txn).await?;
+    tracing::debug!("Inserting users_projects link...");
+    project_user.insert(&txn).await.map_err(|e| {
+        tracing::error!("Failed to insert users_projects link: {:?}", e);
+        e
+    })?;
 
     txn.commit().await?;
+    tracing::debug!("Transaction committed.");
 
     format::json(item)
 }

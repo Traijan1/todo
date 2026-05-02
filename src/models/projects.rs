@@ -1,3 +1,5 @@
+use crate::models::boards;
+
 pub use super::_entities::projects::{ActiveModel, Column, Entity, Model};
 use sea_orm::{entity::prelude::*, ActiveValue::Set};
 pub type Projects = Entity;
@@ -19,6 +21,61 @@ impl ActiveModelBehavior for ActiveModel {
         } else {
             Ok(self)
         }
+    }
+
+    async fn after_save<C>(
+        model: <Self::Entity as EntityTrait>::Model,
+        db: &C,
+        insert: bool,
+    ) -> Result<<Self::Entity as EntityTrait>::Model, DbErr>
+    where
+        C: ConnectionTrait,
+    {
+        tracing::debug!("after_save hook triggered. insert={}", insert);
+        if insert {
+            tracing::debug!("Creating default boards for project id={}", model.id);
+            boards::ActiveModel {
+                project_id: Set(model.id),
+                pid: Set(Uuid::new_v4()),
+                title: Set("Todo".to_string()),
+                ..Default::default()
+            }
+            .insert(db)
+            .await
+            .map_err(|e| {
+                tracing::error!("Failed to create Todo board: {:?}", e);
+                e
+            })?;
+
+            boards::ActiveModel {
+                project_id: Set(model.id),
+                pid: Set(Uuid::new_v4()),
+                title: Set("In Progress".to_string()),
+                ..Default::default()
+            }
+            .insert(db)
+            .await
+            .map_err(|e| {
+                tracing::error!("Failed to create In Progress board: {:?}", e);
+                e
+            })?;
+
+            boards::ActiveModel {
+                project_id: Set(model.id),
+                pid: Set(Uuid::new_v4()),
+                title: Set("Done".to_string()),
+                ..Default::default()
+            }
+            .insert(db)
+            .await
+            .map_err(|e| {
+                tracing::error!("Failed to create Done board: {:?}", e);
+                e
+            })?;
+            tracing::debug!("Default boards created successfully.");
+        }
+
+        Ok(model)
     }
 }
 
