@@ -1,0 +1,40 @@
+use loco_rs::schema::*;
+use sea_orm_migration::prelude::*;
+
+#[derive(DeriveMigrationName)]
+pub struct Migration;
+
+#[async_trait::async_trait]
+impl MigrationTrait for Migration {
+    async fn up(&self, m: &SchemaManager) -> Result<(), DbErr> {
+        create_table(
+            m,
+            "projects",
+            &[
+                ("id", ColType::PkAuto),
+                ("pid", ColType::Uuid),
+                ("title", ColType::String),
+                ("description", ColType::TextNull),
+            ],
+            &[],
+        )
+        .await?;
+
+        create_join_table(
+            m,
+            "users_projects",
+            &[],
+            &[("user", ""), ("project", "")],
+        )
+        .await?;
+
+        Ok(())
+    }
+
+    async fn down(&self, m: &SchemaManager) -> Result<(), DbErr> {
+        drop_table(m, "users_projects").await?;
+        drop_table(m, "projects").await?;
+
+        Ok(())
+    }
+}
