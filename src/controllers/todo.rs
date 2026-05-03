@@ -14,11 +14,12 @@ use crate::models::{
 pub struct Params {
     pub title: Option<String>,
     pub details: Option<Option<String>>,
+    pub board_pid: Option<String>,
 }
 
-async fn load_item(ctx: &AppContext, id: i32) -> Result<Model> {
-    let item = Entity::find_by_id(id).one(&ctx.db).await?;
-    item.ok_or_else(|| Error::NotFound)
+async fn load_item_by_pid(ctx: &AppContext, pid: &str) -> Result<Model> {
+    let item = todos::Model::find_by_pid(&ctx.db, pid).await?;
+    Ok(item)
 }
 
 #[debug_handler]
@@ -58,11 +59,11 @@ pub async fn add(
 
 #[debug_handler]
 pub async fn update(
-    Path(id): Path<i32>,
+    Path(pid): Path<String>,
     State(ctx): State<AppContext>,
     Json(params): Json<Params>,
 ) -> Result<Response> {
-    let item = load_item(&ctx, id).await?;
+    let item = load_item_by_pid(&ctx, &pid).await?;
     let mut item = item.into_active_model();
 
     if let Some(title) = params.title {
@@ -73,32 +74,34 @@ pub async fn update(
         item.details = Set(details);
     }
 
+    if let Some(board_pid) = params.board_pid {
+        let board = boards::Model::find_by_pid(&ctx.db, &board_pid).await?;
+        item.board_id = Set(board.id);
+    }
+
     let item = item.update(&ctx.db).await?;
     format::json(item)
 }
 
 #[debug_handler]
-pub async fn remove(Path(id): Path<String>, State(ctx): State<AppContext>) -> Result<Response> {
-    todos::Model::find_by_pid(&ctx.db, &id)
-        .await?
-        .delete(&ctx.db)
-        .await?;
+pub async fn remove(Path(pid): Path<String>, State(ctx): State<AppContext>) -> Result<Response> {
+    load_item_by_pid(&ctx, &pid).await?.delete(&ctx.db).await?;
 
     format::empty()
 }
 
 #[debug_handler]
-pub async fn get_one(Path(id): Path<i32>, State(ctx): State<AppContext>) -> Result<Response> {
-    format::json(load_item(&ctx, id).await?)
+pub async fn get_one(Path(pid): Path<String>, State(ctx): State<AppContext>) -> Result<Response> {
+    format::json(load_item_by_pid(&ctx, &pid).await?)
 }
 
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("api")
-        .add("/board/{board_pid}/todos", get(list_by_board))
-        .add("/board/{board_pid}/todos", post(add))
-        .add("/todos/{id}", get(get_one))
-        .add("/todos/{id}", delete(remove))
-        .add("/todos/{id}", put(update))
-        .add("/todos/{id}", patch(update))
+        .add("/boards/{board_pid}/todos", get(list_by_board))
+        .add("/boards/{board_pid}/todos", post(add))
+        .add("/todos/{pid}", get(get_one))
+        .add("/todos/{pid}", delete(remove))
+        .add("/todos/{pid}", put(update))
+        .add("/todos/{pid}", patch(update))
 }

@@ -25,7 +25,7 @@ export const useTodoStore = defineStore("todos", () => {
     loading.value = true;
     error.value = null;
     try {
-      const response = await api.post(`/board/${boardPid}/todos`, payload);
+      const response = await api.post(`/boards/${boardPid}/todos`, payload);
       console.log(response);
       todos.value.push(response.data);
       return response.data;
@@ -37,12 +37,12 @@ export const useTodoStore = defineStore("todos", () => {
     }
   }
 
-  async function updateTodo(id: number, payload: { title?: string; details?: string | null; board_pid?: string }) {
+  async function updateTodo(pid: string, payload: { title?: string; details?: string | null; board_pid?: string }) {
     loading.value = true;
     error.value = null;
     try {
-      const response = await api.patch(`/todos/${id}`, payload);
-      const index = todos.value.findIndex((t) => t.id === id);
+      const response = await api.patch(`/todos/${pid}`, payload);
+      const index = todos.value.findIndex((t) => t.pid === pid);
       if (index !== -1) {
         todos.value[index] = response.data;
       }
@@ -62,8 +62,6 @@ export const useTodoStore = defineStore("todos", () => {
     try {
       const response = await api.delete(`/todos/${pid}`);
       todos.value = todos.value.filter((todo) => todo.pid !== pid);
-
-      console.log("adasd");
 
       return response.data;
     } catch (err: any) {

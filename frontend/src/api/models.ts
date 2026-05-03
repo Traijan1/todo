@@ -14,11 +14,11 @@ export interface Project {
 }
 
 export interface Todo {
-  id: number;
   pid: string;
   title: string;
   details?: string;
-  board_id: number;
+  board_pid: string;
+  position: number;
   created_at: string;
   updated_at: string;
 }

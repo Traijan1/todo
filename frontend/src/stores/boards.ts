@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import api from "../api/client";
-import type { Board } from "../api/models";
+import type { Board, Todo } from "../api/models";
 
 export const useBoardStore = defineStore("boards", () => {
   const boards = ref<Board[]>([]);
@@ -38,11 +38,29 @@ export const useBoardStore = defineStore("boards", () => {
     }
   }
 
+  async function reorderTodos(boardPid: string) {
+    loading.value = true;
+    error.value = null;
+    try {
+      const response = await api.post(`/boards/${boardPid}/reorder`, {
+        todos: boards.value.find((board) => board.pid === boardPid)?.todos.map((todo) => todo.pid),
+      });
+      //boards.value.push(response.data);
+      return response.data;
+    } catch (err: any) {
+      error.value = err.response?.data?.description || "Failed to reorder todos";
+      throw err;
+    } finally {
+      loading.value = false;
+    }
+  }
+
   return {
     boards,
     loading,
     error,
     fetchBoards,
     createBoard,
+    reorderTodos,
   };
 });

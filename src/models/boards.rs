@@ -33,6 +33,16 @@ impl ActiveModelBehavior for ActiveModel {
 
 // implement your read-oriented logic here
 impl Model {
+    pub async fn todo_count<C>(&self, db: &C) -> ModelResult<u64>
+    where
+        C: ConnectionTrait,
+    {
+        self.find_related(crate::models::_entities::todos::Entity)
+            .count(db)
+            .await
+            .map_err(ModelError::from)
+    }
+
     pub async fn find_by_pid<C>(db: &C, pid: &str) -> ModelResult<Self>
     where
         C: ConnectionTrait,

@@ -81,10 +81,12 @@ impl Model {
     where
         C: ConnectionTrait,
     {
+        let count = board.todo_count(db).await?;
         ActiveModel {
             title: Set(params.title.clone()),
             details: Set(params.details.clone()),
             board_id: Set(board.id),
+            position: Set(count as i32),
             ..Default::default()
         }
         .insert(db)
@@ -97,4 +99,6 @@ impl Model {
 impl ActiveModel {}
 
 // implement your custom finders, selectors oriented logic here
-impl Entity {}
+impl Entity {
+    
+}

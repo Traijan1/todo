@@ -61,7 +61,7 @@ const saveTask = async () => {
 
   try {
     if (selectedTodo.value) {
-      await todoStore.updateTodo(selectedTodo.value.id, {
+      await todoStore.updateTodo(selectedTodo.value.pid, {
         title: taskForm.value.title,
         details: taskForm.value.description,
       });
@@ -92,10 +92,14 @@ const handleMove = async (event: any, targetBoardPid: string) => {
   if (event.added) {
     const todo = event.added.element;
     try {
-      await todoStore.updateTodo(todo.id, { board_pid: targetBoardPid });
+      await todoStore.updateTodo(todo.pid, { board_pid: targetBoardPid });
+      await boardStore.reorderTodos(targetBoardPid);
     } catch (err) {
       await boardStore.fetchBoards(props.pid);
     }
+  } else if (event.moved) {
+    const boardPid = event.moved.element.board_pid;
+    await boardStore.reorderTodos(boardPid);
   }
 };
 // ----------------------------
@@ -116,8 +120,8 @@ onMounted(async () => {
     </header>
 
     <!-- Boards List -->
-    <div v-if="loading" class="animate-pulse text-brand-primary text-sm font-bold uppercase tracking-widest">Syncing boards...</div>
-    <div v-else class="flex flex-row gap-6 overflow-x-auto pb-6 custom-scrollbar">
+    <!-- <div v-if="loading" class="animate-pulse text-brand-primary text-sm font-bold uppercase tracking-widest">Syncing boards...</div> -->
+    <div class="flex flex-row gap-6 overflow-x-auto pb-6 custom-scrollbar">
       <div v-for="board in boards" :key="board.pid" class="h-min bg-brand-container/50 backdrop-blur-sm p-5 rounded-[2.5rem] w-80 shrink-0 border border-brand-primary/10 flex flex-col shadow-sm">
         <div class="flex justify-between items-center mb-6 px-2">
           <h3 class="text-lg font-bold text-brand-primary/90">{{ board.title }}</h3>

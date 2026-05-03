@@ -33,11 +33,11 @@ server:
     fallback:
       enable: false
     static:
-      enable: true
+      enable: false
       must_exist: true
       precompressed: false
       folder:
-        uri: "/"
+        uri: "/static"
         path: "frontend/dist"
       fallback: "frontend/dist/index.html"
 
