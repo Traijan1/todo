@@ -105,6 +105,19 @@ pub async fn message_handler(
                             }
                         },
                         {
+                            "name": "get_todo",
+                            "description": "Retrieve information about a specific todo",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {
+                                    "todo_pid": {
+                                        "type": "string",
+                                        "description": "The UUID (PID) of the todo"
+                                    }
+                                }
+                            }
+                        },
+                        {
                             "name": "get_boards",
                             "description": "List all boards of a project",
                             "inputSchema": {
@@ -188,6 +201,29 @@ pub async fn message_handler(
                                 {
                                     "type": "text",
                                     "text": format!("Todos found: {:?}", todos)
+                                }
+                            ]
+                        }
+                    })
+                },
+                "get_todo" => {
+                    let todo_pid = payload
+                        .get("params")
+                        .and_then(|p| p.get("arguments"))
+                        .and_then(|p| p.get("todo_pid"))
+                        .and_then(|n| n.as_str())
+                        .unwrap_or("");
+
+                    let todos = todos::Model::find_by_pid(&ctx.db, todo_pid).await?;
+
+                    json!({
+                        "jsonrpc": "2.0",
+                        "id": id,
+                        "result": {
+                            "content": [
+                                {
+                                    "type": "text",
+                                    "text": format!("Todo found: {:?}", todos)
                                 }
                             ]
                         }
