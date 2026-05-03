@@ -114,6 +114,7 @@ const deleteTask = async (todo: Todo) => {
 };
 
 const handleMove = async (event: any, boardPid: string) => {
+  console.log("Move event:", event, "Target board:", boardPid);
   if (event.added) {
     await todoStore.updateTodo(event.added.element.pid, { board_pid: boardPid });
     await boardStore.reorderTodos(boardPid);
@@ -129,8 +130,6 @@ onMounted(async () => {
 </script>
 
 <template>
-  <!-- Container is relative to allow SideDrawer absolute positioning if needed, 
-       but for now we'll keep it fixed to viewport in its own component -->
   <div class="flex-1 flex flex-col min-w-0 h-full overflow-hidden" @click="closeDrawer">
     
     <!-- Header -->
@@ -174,28 +173,27 @@ onMounted(async () => {
             item-key="pid" 
             @change="(e: any) => handleMove(e, board.pid)" 
             class="flex-1 space-y-3 overflow-y-auto custom-scrollbar-y pr-1 pb-4" 
-            ghost-class="opacity-10" 
-            drag-class="opacity-100 scale-105"
+            ghost-class="opacity-50"
           >
             <template #item="{ element: todo }">
-              <article 
+              <div 
                 @click.stop="openEditTask(todo)" 
-                class="relative bg-brand-background/40 p-4 rounded-2xl border border-white/5 hover:border-brand-primary/30 transition-all cursor-pointer shadow-md group/task"
+                class="relative bg-brand-background/60 p-4 rounded-2xl border border-white/5 hover:border-brand-primary/20 transition-all cursor-pointer shadow-sm group/todo"
               >
                 <div class="pr-6">
-                  <p class="text-sm font-bold text-brand-text group-hover/task:text-brand-primary transition-colors leading-tight">{{ todo.title }}</p>
-                  <p v-if="todo.details" class="text-[10px] text-brand-text-muted mt-2 line-clamp-2 leading-relaxed">{{ todo.details }}</p>
+                  <p class="text-sm font-bold text-brand-text group-hover/todo:text-brand-primary transition-colors leading-tight">{{ todo.title }}</p>
+                  <p v-if="todo.details" class="text-[10px] text-brand-text-muted mt-2 line-clamp-2 leading-relaxed font-medium">{{ todo.details }}</p>
                 </div>
 
                 <button 
                   @click.stop="deleteTask(todo)" 
-                  class="absolute top-3 right-3 p-1.5 rounded-lg bg-red-500/10 text-red-500 opacity-0 group-hover/task:opacity-100 transition-all hover:bg-red-500 hover:text-white"
+                  class="absolute top-3 right-3 p-1.5 rounded-lg bg-red-500/10 text-red-500 opacity-0 group-hover/todo:opacity-100 transition-all hover:bg-red-500 hover:text-white"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
                 </button>
-              </article>
+              </div>
             </template>
 
             <template #footer>
@@ -206,7 +204,7 @@ onMounted(async () => {
           </draggable>
         </section>
 
-        <!-- Layout Spacer: matches SideDrawer width -->
+        <!-- Layout Spacer -->
         <div 
           class="transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] shrink-0"
           :class="isDrawerOpen ? 'w-[450px]' : 'w-0'"
@@ -214,7 +212,7 @@ onMounted(async () => {
       </div>
     </div>
 
-    <!-- SideDrawer: Fixed to viewport, handles its own transition -->
+    <!-- SideDrawer -->
     <SideDrawer 
       :is-open="isDrawerOpen" 
       v-bind="drawerMeta"
