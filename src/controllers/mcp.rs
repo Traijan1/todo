@@ -3,7 +3,7 @@
 #![allow(clippy::unused_async)]
 use crate::models::{
     _entities::projects,
-    boards,
+    boards::{self, BoardParams},
     todos::{self, TodoParams},
 };
 use axum::{
@@ -152,6 +152,23 @@ pub async fn message_handler(
                                 "required": ["board_pid", "title"]
                             }
                         },
+                        {
+                            "name": "add_board",
+                            "description": "Create a board for a project",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {
+                                    "project_pid": {
+                                        "type": "string",
+                                        "description": "The UUID (PID) of the project"
+                                    },
+                                    "title": {
+                                        "type": "string",
+                                        "description": "The title of the board"
+                                    },
+                                }
+                            }
+                        },
                     ]
                 }
             })
@@ -205,7 +222,7 @@ pub async fn message_handler(
                             ]
                         }
                     })
-                },
+                }
                 "get_todo" => {
                     let todo_pid = payload
                         .get("params")
@@ -262,7 +279,10 @@ pub async fn message_handler(
                         .get("board_pid")
                         .and_then(|v| v.as_str())
                         .ok_or_else(|| Error::BadRequest("board_pid required".to_string()))?;
-                    let title = args.get("title").and_then(|v| v.as_str()).unwrap_or_default();
+                    let title = args
+                        .get("title")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or_default();
                     let details = args.get("details").and_then(|v| v.as_str());
 
                     let board = boards::Model::find_by_pid(&ctx.db, board_pid).await?;
@@ -271,6 +291,44 @@ pub async fn message_handler(
                         &TodoParams {
                             title: title.to_string(),
                             details: details.map(|s| s.to_string()),
+                        },
+                        &board,
+                    )
+                    .await?;
+
+                    json!({
+                        "jsonrpc": "2.0",
+                        "id": id,
+                        "result": {
+                            "content": [
+                                {
+                                    "type": "text",
+                                    "text": format!("Todo created: {:?}", todo)
+                                }
+                            ]
+                        }
+                    })
+                }
+                "add_board" => {
+                    let args = payload
+                        .get("params")
+                        .and_then(|p| p.get("arguments"))
+                        .ok_or_else(|| Error::BadRequest("arguments required".to_string()))?;
+
+                    let project_pid = args
+                        .get("project_pid")
+                        .and_then(|v| v.as_str())
+                        .ok_or_else(|| Error::BadRequest("project_pid required".to_string()))?;
+                    let title = args
+                        .get("title")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or_default();
+
+                    let board = projects::Model::find_by_pid(&ctx.db, project_pid).await?;
+                    let todo = boards::Model::create(
+                        &ctx.db,
+                        &BoardParams {
+                            title: title.to_string(),
                         },
                         &board,
                     )

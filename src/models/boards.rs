@@ -2,13 +2,19 @@ use std::str::FromStr;
 
 use crate::models::{
     _entities::boards::{self, Column},
-    projects,
+    projects::{self, Projects},
 };
 
 pub use super::_entities::boards::{ActiveModel, Entity, Model};
 use loco_rs::model::{ModelError, ModelResult};
 use sea_orm::{entity::prelude::*, ActiveValue::Set};
+use serde::{Deserialize, Serialize};
 pub type Boards = Entity;
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct BoardParams {
+    pub title: String,
+}
 
 #[async_trait::async_trait]
 impl ActiveModelBehavior for ActiveModel {
@@ -58,7 +64,10 @@ impl Model {
         C: ConnectionTrait,
     {
         let project = projects::Entity::find()
-            .filter(projects::Column::Pid.eq(Uuid::from_str(pid).map_err(|_| ModelError::EntityNotFound)?))
+            .filter(
+                projects::Column::Pid
+                    .eq(Uuid::from_str(pid).map_err(|_| ModelError::EntityNotFound)?),
+            )
             .one(db)
             .await?
             .ok_or_else(|| ModelError::EntityNotFound)?;
@@ -69,6 +78,24 @@ impl Model {
             .await?;
 
         Ok(items)
+    }
+
+    pub async fn create<C>(
+        db: &C,
+        params: &BoardParams,
+        project: &projects::Model,
+    ) -> ModelResult<Self>
+    where
+        C: ConnectionTrait,
+    {
+        ActiveModel {
+            title: Set(params.title.clone()),
+            project_id: Set(project.id),
+            ..Default::default()
+        }
+        .insert(db)
+        .await
+        .map_err(|e| ModelError::Any(e.into()))
     }
 }
 

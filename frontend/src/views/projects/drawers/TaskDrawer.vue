@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref, watch } from "vue";
 import type { Todo } from "../../../api/models";
 
 const props = defineProps<{
@@ -8,20 +8,24 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: 'save', data: { title: string; description: string }): void;
+  (e: "save", data: { title: string; description: string }): void;
 }>();
 
 const form = ref({
   title: props.todo?.title || "",
-  description: props.todo?.details || ""
+  description: props.todo?.details || "",
 });
 
-watch(() => props.todo, (newTodo) => {
-  form.value = {
-    title: newTodo?.title || "",
-    description: newTodo?.details || ""
-  };
-}, { immediate: true });
+watch(
+  () => props.todo,
+  (newTodo) => {
+    form.value = {
+      title: newTodo?.title || "",
+      description: newTodo?.details || "",
+    };
+  },
+  { immediate: true },
+);
 
 const titleInputRef = ref<HTMLInputElement | null>(null);
 defineExpose({ form, focus: () => titleInputRef.value?.focus() });
@@ -30,25 +34,13 @@ defineExpose({ form, focus: () => titleInputRef.value?.focus() });
 <template>
   <div class="space-y-10">
     <div class="space-y-1">
-      <label class="brand-label">Task Identification</label>
-      <input
-        ref="titleInputRef"
-        v-model="form.title"
-        type="text"
-        placeholder="Name your mission..."
-        class="brand-input"
-        @keydown.enter="emit('save', form)"
-      />
+      <label class="brand-label">Title</label>
+      <input ref="titleInputRef" v-model="form.title" type="text" placeholder="Name your mission..." class="brand-input" @keydown.enter="emit('save', form)" />
     </div>
 
     <div class="space-y-1">
-      <label class="brand-label">Strategic Details</label>
-      <textarea
-        v-model="form.description"
-        placeholder="Map out the steps..."
-        rows="8"
-        class="brand-textarea"
-      ></textarea>
+      <label class="brand-label">Description</label>
+      <textarea v-model="form.description" placeholder="Map out the steps..." rows="8" class="brand-textarea"></textarea>
     </div>
   </div>
 </template>
