@@ -5,16 +5,15 @@ use loco_rs::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::models::{
-    _entities::todos::{self, ActiveModel, Entity, Model},
+    _entities::todos::{self, Entity, Model},
     boards,
+    todos::TodoParams,
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
-#[serde(default)]
 pub struct Params {
     pub title: Option<String>,
     pub details: Option<Option<String>>,
-    pub board_pid: Option<String>,
 }
 
 async fn load_item(ctx: &AppContext, id: i32) -> Result<Model> {
@@ -44,18 +43,14 @@ pub async fn add(
     Json(params): Json<Params>,
 ) -> Result<Response> {
     let board = boards::Model::find_by_pid(&ctx.db, &board_pid).await?;
-
-    let title = params
-        .title
-        .ok_or_else(|| Error::BadRequest("title is required".to_string()))?;
-
-    let item = ActiveModel {
-        title: Set(title),
-        details: Set(params.details.flatten()),
-        board_id: Set(board.id),
-        ..Default::default()
-    }
-    .insert(&ctx.db)
+    let item = todos::Model::create(
+        &ctx.db,
+        &TodoParams {
+            title: params.title.unwrap_or_default(),
+            details: params.details.flatten(),
+        },
+        &board,
+    )
     .await?;
 
     format::json(item)
@@ -76,11 +71,6 @@ pub async fn update(
 
     if let Some(details) = params.details {
         item.details = Set(details);
-    }
-
-    if let Some(board_pid) = params.board_pid {
-        let board = boards::Model::find_by_pid(&ctx.db, &board_pid).await?;
-        item.board_id = Set(board.id);
     }
 
     let item = item.update(&ctx.db).await?;

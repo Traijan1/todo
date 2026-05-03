@@ -1,6 +1,7 @@
 use crate::models::boards;
 
 pub use super::_entities::projects::{ActiveModel, Column, Entity, Model};
+use loco_rs::model::{ModelError, ModelResult};
 use sea_orm::{entity::prelude::*, ActiveValue::Set};
 pub type Projects = Entity;
 
@@ -80,7 +81,17 @@ impl ActiveModelBehavior for ActiveModel {
 }
 
 // implement your read-oriented logic here
-impl Model {}
+impl Model {
+    pub async fn find_by_pid<C>(db: &C, pid: &str) -> ModelResult<Self>
+    where
+        C: ConnectionTrait,
+    {
+        let pid = Uuid::parse_str(pid).map_err(|_| ModelError::EntityNotFound)?;
+        let item = Entity::find().filter(Column::Pid.eq(pid)).one(db).await?;
+
+        item.ok_or(ModelError::EntityNotFound)
+    }
+}
 
 // implement your write-oriented logic here
 impl ActiveModel {}

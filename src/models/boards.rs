@@ -1,4 +1,9 @@
-use crate::models::_entities::boards::Column;
+use std::str::FromStr;
+
+use crate::models::{
+    _entities::boards::{self, Column},
+    projects,
+};
 
 pub use super::_entities::boards::{ActiveModel, Entity, Model};
 use loco_rs::model::{ModelError, ModelResult};
@@ -36,6 +41,24 @@ impl Model {
         let item = Entity::find().filter(Column::Pid.eq(pid)).one(db).await?;
 
         item.ok_or(ModelError::EntityNotFound)
+    }
+
+    pub async fn find_by_project_pid<C>(db: &C, pid: &str) -> ModelResult<Vec<Self>>
+    where
+        C: ConnectionTrait,
+    {
+        let project = projects::Entity::find()
+            .filter(projects::Column::Pid.eq(Uuid::from_str(pid).map_err(|_| ModelError::EntityNotFound)?))
+            .one(db)
+            .await?
+            .ok_or_else(|| ModelError::EntityNotFound)?;
+
+        let items = boards::Entity::find()
+            .filter(boards::Column::ProjectId.eq(project.id))
+            .all(db)
+            .await?;
+
+        Ok(items)
     }
 }
 

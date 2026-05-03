@@ -25,7 +25,7 @@ export const useTodoStore = defineStore("todos", () => {
     loading.value = true;
     error.value = null;
     try {
-      const response = await api.post(`/boards/${boardPid}/todos`, payload);
+      const response = await api.post(`/board/${boardPid}/todos`, payload);
       console.log(response);
       todos.value.push(response.data);
       return response.data;

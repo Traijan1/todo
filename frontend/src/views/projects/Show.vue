@@ -55,6 +55,8 @@ const openEditDrawer = async (todo: Todo) => {
 };
 
 const saveTask = async () => {
+  console.log("Erstellt");
+
   if (!taskForm.value.title.trim()) return;
 
   try {
@@ -116,7 +118,7 @@ onMounted(async () => {
     <!-- Boards List -->
     <div v-if="loading" class="animate-pulse text-brand-primary text-sm font-bold uppercase tracking-widest">Syncing boards...</div>
     <div v-else class="flex flex-row gap-6 overflow-x-auto pb-6 custom-scrollbar">
-      <div v-for="board in boards" :key="board.pid" class="bg-brand-container/50 backdrop-blur-sm p-5 rounded-[2.5rem] w-80 shrink-0 border border-brand-primary/10 flex flex-col shadow-sm">
+      <div v-for="board in boards" :key="board.pid" class="h-min bg-brand-container/50 backdrop-blur-sm p-5 rounded-[2.5rem] w-80 shrink-0 border border-brand-primary/10 flex flex-col shadow-sm">
         <div class="flex justify-between items-center mb-6 px-2">
           <h3 class="text-lg font-bold text-brand-primary/90">{{ board.title }}</h3>
           <button @click="openCreateDrawer(board.pid)" class="w-8 h-8 flex items-center justify-center rounded-full bg-brand-primary/10 text-brand-primary hover:bg-brand-primary hover:text-brand-container transition-all">
