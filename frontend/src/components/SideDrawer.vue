@@ -1,12 +1,15 @@
 <script setup lang="ts">
+import { ref } from 'vue';
+
 interface Props {
   isOpen: boolean;
   title?: string;
   subtitle?: string;
   width?: string;
+  pid?: string;
 }
 
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
   title: 'Details',
   width: 'w-[450px]'
 });
@@ -14,89 +17,92 @@ withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   (e: 'close'): void;
 }>();
+
+const copied = ref(false);
+
+const copyPid = async () => {
+  if (props.pid) {
+    await navigator.clipboard.writeText(props.pid);
+    copied.value = true;
+    setTimeout(() => {
+      copied.value = false;
+    }, 2000);
+  }
+};
 </script>
 
 <template>
-  <div class="relative">
-    <!-- Overlay / Backdrop -->
-    <Transition name="fade">
-      <div 
-        v-if="isOpen" 
-        @click="emit('close')" 
-        class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity"
-      ></div>
-    </Transition>
-
-    <!-- Side Drawer Panel -->
+  <Teleport to="body">
     <Transition name="slide">
       <div 
         v-if="isOpen" 
         :class="[
-          'fixed inset-y-0 right-0 z-50 bg-brand-container shadow-[-20px_0_50px_rgba(0,0,0,0.5)] border-l border-brand-primary/10 flex flex-col transition-transform',
+          'fixed inset-y-0 right-0 z-[100] bg-brand-container border-l border-brand-primary/20 flex flex-col shadow-2xl transition-all',
           width
         ]"
       >
-        <!-- Header Section -->
-        <header class="p-6 border-b border-white/5 flex justify-between items-center bg-brand-background/20">
-          <div>
-            <slot name="header">
-              <h3 class="text-xl font-black text-brand-primary uppercase tracking-tighter">{{ title }}</h3>
-              <p v-if="subtitle" class="text-[10px] text-brand-text-muted font-bold uppercase tracking-widest mt-0.5">
-                {{ subtitle }}
-              </p>
-            </slot>
-          </div>
-          <button @click="emit('close')" class="text-brand-text-muted hover:text-white transition-colors p-2 hover:bg-white/5 rounded-full">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        <!-- Enhanced PID Badge (Top Right) -->
+        <div v-if="pid" class="absolute top-4 right-14 z-20">
+          <button 
+            @click="copyPid"
+            class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-primary/10 border border-brand-primary/30 hover:bg-brand-primary/20 hover:border-brand-primary/50 transition-all group/pid backdrop-blur-md"
+          >
+            <span class="text-[10px] font-mono font-bold text-brand-primary tracking-wider uppercase">ID: {{ pid.split('-')[0] }}...</span>
+            <svg v-if="!copied" xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-brand-primary group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+            </svg>
+            <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
             </svg>
           </button>
+        </div>
+
+        <!-- Close Button -->
+        <button 
+          @click="emit('close')" 
+          class="absolute top-4 right-4 z-20 text-brand-text-muted hover:text-white transition-colors p-2 hover:bg-white/10 rounded-full"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+
+        <!-- Header -->
+        <header class="p-8 pb-6 border-b border-white/5 bg-brand-background/10">
+          <slot name="header">
+            <h3 class="text-2xl font-bold text-brand-primary pr-24">{{ title }}</h3>
+            <p v-if="subtitle" class="text-[10px] text-brand-text-muted font-bold uppercase tracking-[0.2em] mt-2">
+              {{ subtitle }}
+            </p>
+          </slot>
         </header>
 
-        <!-- Body / Main Content -->
-        <div class="flex-1 p-8 overflow-y-auto custom-scrollbar">
+        <!-- Main Body -->
+        <div class="flex-1 p-8 overflow-y-auto custom-scrollbar overflow-x-hidden">
           <slot />
         </div>
 
-        <!-- Footer Section -->
-        <footer v-if="$slots.footer" class="p-6 bg-brand-background/20 border-t border-white/5">
+        <!-- Footer -->
+        <footer v-if="$slots.footer" class="p-8 bg-brand-background/20 border-t border-white/5">
           <slot name="footer" />
         </footer>
       </div>
     </Transition>
-  </div>
+  </Teleport>
 </template>
 
 <style scoped>
-/* Slide Transition */
 .slide-enter-active,
 .slide-leave-active {
-  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: transform;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
 }
 
 .slide-enter-from,
 .slide-leave-to {
-  transform: translate3d(100%, 0, 0);
-}
-
-.slide-enter-to,
-.slide-leave-from {
-  transform: translate3d(0, 0, 0);
-}
-
-/* Fade Transition for Backdrop */
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-.fade-enter-from,
-.fade-leave-to {
+  transform: translateX(100%);
   opacity: 0;
 }
 
-
-/* Scrollbar Styling within the Drawer */
 .custom-scrollbar::-webkit-scrollbar {
   width: 4px;
 }
@@ -104,7 +110,7 @@ const emit = defineEmits<{
   background: transparent;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(var(--brand-primary-rgb), 0.1);
+  background: rgba(var(--brand-primary-rgb), 0.2);
   border-radius: 10px;
 }
 </style>

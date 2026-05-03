@@ -11,6 +11,20 @@
   --color-brand-muted: rgba(224, 187, 228, 0.3);
 }
 
+@layer components {
+  .brand-label {
+    @apply text-[10px] font-black uppercase tracking-[0.3em] text-brand-primary/40 ml-1 mb-3 block;
+  }
+
+  .brand-input {
+    @apply w-full bg-brand-background/30 border border-brand-primary/10 rounded-3xl px-6 py-5 text-brand-text placeholder-white/5 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 transition-all text-xl font-bold;
+  }
+
+  .brand-textarea {
+    @apply w-full bg-brand-background/30 border border-brand-primary/10 rounded-3xl px-6 py-5 text-brand-text placeholder-white/5 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 transition-all resize-none text-sm font-medium leading-relaxed;
+  }
+}
+
 body {
   margin: 0;
   font-family: "Arimo", -apple-system, blinkmacsystemfont, "Segoe UI", roboto, "Helvetica Neue", arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";

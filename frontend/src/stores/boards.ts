@@ -55,12 +55,31 @@ export const useBoardStore = defineStore("boards", () => {
     }
   }
 
+  async function updateBoard(boardPid: string, payload: { title: string }) {
+    loading.value = true;
+    error.value = null;
+    try {
+      const response = await api.patch(`/boards/${boardPid}`, payload);
+      const index = boards.value.findIndex((b) => b.pid === boardPid);
+      if (index !== -1) {
+        boards.value[index] = { ...boards.value[index], ...response.data };
+      }
+      return response.data;
+    } catch (err: any) {
+      error.value = err.response?.data?.description || "Failed to update board";
+      throw err;
+    } finally {
+      loading.value = false;
+    }
+  }
+
   return {
     boards,
     loading,
     error,
     fetchBoards,
     createBoard,
+    updateBoard,
     reorderTodos,
   };
 });
