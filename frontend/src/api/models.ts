@@ -26,6 +26,7 @@ export interface Todo {
 export interface Board {
   pid: string;
   title: string;
+  position: number;
   created_at: string;
   updated_at: string;
   todos: Todo[];

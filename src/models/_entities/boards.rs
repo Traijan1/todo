@@ -14,6 +14,7 @@ pub struct Model {
     pub pid: Uuid,
     pub title: String,
     pub project_id: i32,
+    pub position: i32,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

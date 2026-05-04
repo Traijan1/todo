@@ -7,8 +7,8 @@ import { useTodoStore } from "../../stores/todos";
 import SideDrawer from "../../components/SideDrawer.vue";
 import TaskDrawer from "./drawers/TaskDrawer.vue";
 import BoardDrawer from "./drawers/BoardDrawer.vue";
+import BoardColumn from "./components/BoardColumn.vue";
 import type { Todo, Board } from "../../api/models";
-import draggable from "vuedraggable";
 
 const props = defineProps<{
   pid: string;
@@ -144,65 +144,17 @@ onMounted(async () => {
     <!-- Boards Container -->
     <div class="flex-1 overflow-x-auto overflow-y-hidden custom-scrollbar">
       <div class="flex h-full pb-4 gap-6 items-start w-max min-w-full">
-        <section 
+        <BoardColumn 
           v-for="board in boards" 
-          :key="board.pid" 
-          class="h-full flex flex-col bg-brand-container/50 backdrop-blur-md p-5 rounded-3xl w-80 shrink-0 border border-brand-primary/5 shadow-xl"
-          @click.stop
-        >
-          <!-- Board Header -->
-          <div class="flex justify-between items-center mb-6 px-2 shrink-0">
-            <h3 
-              class="text-lg font-bold text-brand-primary/80 cursor-pointer hover:text-brand-primary transition-all truncate"
-              @click.stop="openEditBoard(board)"
-            >
-              {{ board.title }}
-            </h3>
-            <button 
-              @click.stop="openCreateTask(board.pid)" 
-              class="w-8 h-8 flex items-center justify-center rounded-xl bg-brand-primary/10 text-brand-primary hover:bg-brand-primary hover:text-brand-container transition-all"
-            >
-              <span class="text-xl font-light">+</span>
-            </button>
-          </div>
-
-          <!-- Tasks -->
-          <draggable 
-            v-model="board.todos" 
-            group="todos" 
-            item-key="pid" 
-            @change="(e: any) => handleMove(e, board.pid)" 
-            class="flex-1 space-y-3 overflow-y-auto custom-scrollbar-y pr-1 pb-4" 
-            ghost-class="opacity-50"
-          >
-            <template #item="{ element: todo }">
-              <div 
-                @click.stop="openEditTask(todo)" 
-                class="relative bg-brand-background/60 p-4 rounded-2xl border border-white/5 hover:border-brand-primary/20 transition-all cursor-pointer shadow-sm group/todo"
-              >
-                <div class="pr-6">
-                  <p class="text-sm font-bold text-brand-text group-hover/todo:text-brand-primary transition-colors leading-tight">{{ todo.title }}</p>
-                  <p v-if="todo.details" class="text-[10px] text-brand-text-muted mt-2 line-clamp-2 leading-relaxed font-medium">{{ todo.details }}</p>
-                </div>
-
-                <button 
-                  @click.stop="deleteTask(todo)" 
-                  class="absolute top-3 right-3 p-1.5 rounded-lg bg-red-500/10 text-red-500 opacity-0 group-hover/todo:opacity-100 transition-all hover:bg-red-500 hover:text-white"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                </button>
-              </div>
-            </template>
-
-            <template #footer>
-              <div v-if="!board.todos?.length" class="h-32 flex items-center justify-center rounded-2xl border-2 border-dashed border-white/5 text-[10px] text-brand-text-muted uppercase tracking-widest font-bold opacity-20">
-                Empty
-              </div>
-            </template>
-          </draggable>
-        </section>
+          :key="board.pid"
+          v-model:todos="board.todos"
+          :board="board"
+          @edit-board="openEditBoard(board)"
+          @create-task="openCreateTask(board.pid)"
+          @edit-task="openEditTask"
+          @delete-task="deleteTask"
+          @change="handleMove($event, board.pid)"
+        />
 
         <!-- Layout Spacer -->
         <div 

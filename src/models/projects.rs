@@ -91,6 +91,16 @@ impl Model {
 
         item.ok_or(ModelError::EntityNotFound)
     }
+
+    pub async fn board_count<C>(&self, db: &C) -> ModelResult<u64>
+    where
+        C: ConnectionTrait,
+    {
+        self.find_related(crate::models::_entities::boards::Entity)
+            .count(db)
+            .await
+            .map_err(ModelError::from)
+    }
 }
 
 // implement your write-oriented logic here

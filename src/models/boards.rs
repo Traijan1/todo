@@ -88,9 +88,12 @@ impl Model {
     where
         C: ConnectionTrait,
     {
+        let count = project.board_count(db).await?;
+
         ActiveModel {
             title: Set(params.title.clone()),
             project_id: Set(project.id),
+            position: Set(count as i32),
             ..Default::default()
         }
         .insert(db)
