@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref } from "vue";
 
 interface Props {
   isOpen: boolean;
@@ -10,12 +10,12 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  title: 'Details',
-  width: 'w-[600px]'
+  title: "Details",
+  width: "w-full sm:w-[600px]",
 });
 
 const emit = defineEmits<{
-  (e: 'close'): void;
+  (e: "close"): void;
 }>();
 
 const copied = ref(false);
@@ -33,23 +33,24 @@ const copyPid = async () => {
 
 <template>
   <Teleport to="body">
+    <!-- Mobile Backdrop -->
+    <Transition name="fade">
+      <div v-if="isOpen" @click="emit('close')" class="fixed inset-0 bg-black/50 z-[90] lg:hidden backdrop-blur-sm"></div>
+    </Transition>
+
     <Transition name="slide">
-      <div 
-        v-if="isOpen" 
-        :class="[
-          'fixed inset-y-0 right-0 z-[100] bg-brand-container border-l border-brand-primary/20 flex flex-col shadow-2xl transition-all',
-          width
-        ]"
-      >
+      <div v-if="isOpen" :class="['fixed inset-y-0 right-0 z-[100] bg-brand-container border-l border-brand-primary/20 flex flex-col shadow-2xl transition-all max-w-[100vw]', width]">
         <!-- Enhanced PID Badge (Top Right) -->
         <div v-if="pid" class="absolute top-4 right-14 z-20">
-          <button 
-            @click="copyPid"
-            class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-primary/10 border border-brand-primary/30 hover:bg-brand-primary/20 hover:border-brand-primary/50 transition-all group/pid backdrop-blur-md"
-          >
-            <span class="text-[10px] font-mono font-bold text-brand-primary tracking-wider uppercase">ID: {{ pid.split('-')[0] }}...</span>
+          <button @click="copyPid" class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-primary/10 border border-brand-primary/30 hover:bg-brand-primary/20 hover:border-brand-primary/50 transition-all group/pid backdrop-blur-md">
+            <span class="text-[10px] font-mono font-bold text-brand-primary tracking-wider uppercase">ID: {{ pid.split("-")[0] }}...</span>
             <svg v-if="!copied" xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-brand-primary group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"
+              />
             </svg>
             <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
@@ -58,10 +59,7 @@ const copyPid = async () => {
         </div>
 
         <!-- Close Button -->
-        <button 
-          @click="emit('close')" 
-          class="absolute top-4 right-4 z-20 text-brand-text-muted hover:text-white transition-colors p-2 hover:bg-white/10 rounded-full"
-        >
+        <button @click="emit('close')" class="absolute top-4 right-4 z-20 text-brand-text-muted hover:text-white transition-colors p-2 hover:bg-white/10 rounded-full">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
@@ -94,12 +92,24 @@ const copyPid = async () => {
 <style scoped>
 .slide-enter-active,
 .slide-leave-active {
-  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
+  transition:
+    transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.4s ease;
 }
 
 .slide-enter-from,
 .slide-leave-to {
   transform: translateX(100%);
+  opacity: 0;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
   opacity: 0;
 }
 

@@ -18,7 +18,9 @@ defineEmits<{
   >
     <div class="flex-1 min-w-0">
       <p class="text-sm font-bold text-brand-text group-hover/todo:text-brand-primary transition-colors leading-tight truncate">{{ todo.title }}</p>
-      <p v-if="todo.details" class="text-[10px] text-brand-text-muted truncate font-medium opacity-60 mt-0.5">{{ todo.details.replace(/[#*`]/g, '') }}</p>
+      <p v-if="todo.details" class="text-[10px] text-brand-text-muted truncate font-medium opacity-60 mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis">
+        {{ todo.details.replace(/[#*`]/g, '') }}
+      </p>
     </div>
 
     <div class="flex items-center gap-3 shrink-0">

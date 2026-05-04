@@ -139,13 +139,14 @@ onMounted(async () => {
 
     <!-- Boards Container -->
     <div 
-      class="flex-1 grid transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] min-h-0"
+      class="flex-1 lg:grid transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] min-h-0"
       :style="{ gridTemplateColumns: isDrawerOpen ? '1fr 600px' : '1fr 0px' }"
     >
+      <!-- Main Content (Boards) -->
       <div class="overflow-y-auto overflow-x-hidden custom-scrollbar-y pr-2 min-w-0">
         <div class="flex flex-col gap-4 pb-20">
-          <BoardColumn
-            v-for="board in boards"
+          <BoardColumn 
+            v-for="board in boards" 
             :key="board.pid"
             v-model:todos="board.todos"
             :board="board"
@@ -157,11 +158,10 @@ onMounted(async () => {
           />
         </div>
       </div>
-      <!-- Spacer for Drawer -->
-      <div class="h-full pointer-events-none"></div>
-    </div>
 
-    <!-- SideDrawer -->
+      <!-- Desktop Spacer for Drawer -->
+      <div class="hidden lg:block h-full pointer-events-none"></div>
+    </div>    <!-- SideDrawer -->
     <SideDrawer :is-open="isDrawerOpen" v-bind="drawerMeta" @close="closeDrawer">
       <component :is="activeDrawer" ref="drawerRef" v-bind="drawerData" @save="activeDrawer === TaskDrawer ? handleTaskSave($event) : handleBoardSave($event)" />
 
