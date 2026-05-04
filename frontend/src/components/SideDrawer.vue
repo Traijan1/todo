@@ -68,22 +68,22 @@ const copyPid = async () => {
         </button>
 
         <!-- Header -->
-        <header class="p-8 pb-6 border-b border-white/5 bg-brand-background/10">
+        <header class="p-6 pb-4 border-b border-white/5 bg-brand-background/10">
           <slot name="header">
-            <h3 class="text-2xl font-bold text-brand-primary pr-24">{{ title }}</h3>
-            <p v-if="subtitle" class="text-[10px] text-brand-text-muted font-bold uppercase tracking-[0.2em] mt-2">
+            <h3 class="text-lg font-bold text-brand-primary pr-20">{{ title }}</h3>
+            <p v-if="subtitle" class="text-[9px] text-brand-text-muted font-bold uppercase tracking-widest mt-1">
               {{ subtitle }}
             </p>
           </slot>
         </header>
 
         <!-- Main Body -->
-        <div class="flex-1 p-8 overflow-y-auto custom-scrollbar overflow-x-hidden">
+        <div class="flex-1 p-6 overflow-y-auto custom-scrollbar overflow-x-hidden">
           <slot />
         </div>
 
         <!-- Footer -->
-        <footer v-if="$slots.footer" class="p-8 bg-brand-background/20 border-t border-white/5">
+        <footer v-if="$slots.footer" class="p-6 bg-brand-background/20 border-t border-white/5">
           <slot name="footer" />
         </footer>
       </div>

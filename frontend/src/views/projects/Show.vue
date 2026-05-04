@@ -133,17 +133,17 @@ onMounted(async () => {
   <div class="flex-1 flex flex-col min-w-0 h-full overflow-hidden" @click="closeDrawer">
     
     <!-- Header -->
-    <header class="mb-6 shrink-0">
-      <h2 class="text-3xl font-bold text-brand-primary tracking-tight truncate">{{ project?.title || "Loading..." }}</h2>
+    <header class="mb-4 shrink-0">
+      <h2 class="text-xl font-bold text-brand-primary tracking-tight truncate">{{ project?.title || "Loading..." }}</h2>
       <div class="flex items-center gap-2 mt-1">
-        <div class="h-0.5 w-8 bg-brand-primary/30 rounded-full"></div>
-        <p class="text-brand-text-muted text-[10px] font-bold uppercase tracking-widest">Board Overview</p>
+        <div class="h-0.5 w-6 bg-brand-primary/30 rounded-full"></div>
+        <p class="text-brand-text-muted text-[9px] font-bold uppercase tracking-widest">Board Overview</p>
       </div>
     </header>
 
     <!-- Boards Container -->
-    <div class="flex-1 overflow-x-auto overflow-y-hidden custom-scrollbar">
-      <div class="flex h-full pb-4 gap-6 items-start w-max min-w-full">
+    <div class="flex-1 overflow-y-auto custom-scrollbar-y pr-2">
+      <div class="flex flex-col gap-4 pb-20">
         <BoardColumn 
           v-for="board in boards" 
           :key="board.pid"
@@ -156,10 +156,10 @@ onMounted(async () => {
           @change="handleMove($event, board.pid)"
         />
 
-        <!-- Layout Spacer -->
+        <!-- Layout Spacer for Drawer -->
         <div 
           class="transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] shrink-0"
-          :class="isDrawerOpen ? 'w-[450px]' : 'w-0'"
+          :class="isDrawerOpen ? 'h-32' : 'h-0'"
         ></div>
       </div>
     </div>
@@ -178,10 +178,10 @@ onMounted(async () => {
       />
 
       <template #footer>
-        <div class="flex gap-4">
+        <div class="flex gap-3">
           <button 
             @click="activeDrawer === TaskDrawer ? handleTaskSave(drawerRef.form) : handleBoardSave(drawerRef.form)" 
-            class="flex-1 bg-brand-primary text-brand-container py-5 rounded-2xl font-bold uppercase tracking-widest text-xs hover:bg-brand-primary/90 transition-all shadow-lg"
+            class="flex-1 bg-brand-primary text-brand-container py-3 rounded-xl font-bold uppercase tracking-widest text-[10px] hover:bg-brand-primary/90 transition-all shadow-md"
           >
             Save Changes
           </button>
@@ -189,9 +189,9 @@ onMounted(async () => {
           <button 
             v-if="selectedTodo"
             @click="deleteTask(selectedTodo)"
-            class="w-16 h-16 rounded-2xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center"
+            class="w-10 h-10 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center shrink-0"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
             </svg>
           </button>
