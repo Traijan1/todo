@@ -75,7 +75,7 @@ const localTodos = computed({
         group="todos" 
         item-key="pid" 
         @change="emit('change', $event)" 
-        class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3" 
+        class="flex flex-col gap-2" 
         ghost-class="opacity-50"
       >
         <template #item="{ element: todo }">

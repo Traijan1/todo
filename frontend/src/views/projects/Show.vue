@@ -37,14 +37,14 @@ const drawerMeta = computed(() => {
     return {
       title: selectedTodo.value ? "Edit Task" : "New Task",
       subtitle: selectedTodo.value ? "Update task details" : "Create a new mission",
-      pid: selectedTodo.value?.pid
+      pid: selectedTodo.value?.pid,
     };
   }
   if (activeDrawer.value === BoardDrawer) {
     return {
       title: "Board Settings",
       subtitle: "Configure board properties",
-      pid: selectedBoard.value?.pid
+      pid: selectedBoard.value?.pid,
     };
   }
   return { title: "", subtitle: "", pid: "" };
@@ -131,66 +131,50 @@ onMounted(async () => {
 
 <template>
   <div class="flex-1 flex flex-col min-w-0 h-full overflow-hidden" @click="closeDrawer">
-    
     <!-- Header -->
     <header class="mb-4 shrink-0">
       <h2 class="text-xl font-bold text-brand-primary tracking-tight truncate">{{ project?.title || "Loading..." }}</h2>
-      <div class="flex items-center gap-2 mt-1">
-        <div class="h-0.5 w-6 bg-brand-primary/30 rounded-full"></div>
-        <p class="text-brand-text-muted text-[9px] font-bold uppercase tracking-widest">Board Overview</p>
-      </div>
+      <div class="flex items-center gap-2 mt-1"></div>
     </header>
 
     <!-- Boards Container -->
-    <div class="flex-1 overflow-y-auto custom-scrollbar-y pr-2">
-      <div class="flex flex-col gap-4 pb-20">
-        <BoardColumn 
-          v-for="board in boards" 
-          :key="board.pid"
-          v-model:todos="board.todos"
-          :board="board"
-          @edit-board="openEditBoard(board)"
-          @create-task="openCreateTask(board.pid)"
-          @edit-task="openEditTask"
-          @delete-task="deleteTask"
-          @change="handleMove($event, board.pid)"
-        />
-
-        <!-- Layout Spacer for Drawer -->
-        <div 
-          class="transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] shrink-0"
-          :class="isDrawerOpen ? 'h-32' : 'h-0'"
-        ></div>
+    <div 
+      class="flex-1 grid transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] min-h-0"
+      :style="{ gridTemplateColumns: isDrawerOpen ? '1fr 600px' : '1fr 0px' }"
+    >
+      <div class="overflow-y-auto overflow-x-hidden custom-scrollbar-y pr-2 min-w-0">
+        <div class="flex flex-col gap-4 pb-20">
+          <BoardColumn
+            v-for="board in boards"
+            :key="board.pid"
+            v-model:todos="board.todos"
+            :board="board"
+            @edit-board="openEditBoard(board)"
+            @create-task="openCreateTask(board.pid)"
+            @edit-task="openEditTask"
+            @delete-task="deleteTask"
+            @change="handleMove($event, board.pid)"
+          />
+        </div>
       </div>
+      <!-- Spacer for Drawer -->
+      <div class="h-full pointer-events-none"></div>
     </div>
 
     <!-- SideDrawer -->
-    <SideDrawer 
-      :is-open="isDrawerOpen" 
-      v-bind="drawerMeta"
-      @close="closeDrawer"
-    >
-      <component 
-        :is="activeDrawer" 
-        ref="drawerRef"
-        v-bind="drawerData"
-        @save="activeDrawer === TaskDrawer ? handleTaskSave($event) : handleBoardSave($event)"
-      />
+    <SideDrawer :is-open="isDrawerOpen" v-bind="drawerMeta" @close="closeDrawer">
+      <component :is="activeDrawer" ref="drawerRef" v-bind="drawerData" @save="activeDrawer === TaskDrawer ? handleTaskSave($event) : handleBoardSave($event)" />
 
       <template #footer>
         <div class="flex gap-3">
-          <button 
-            @click="activeDrawer === TaskDrawer ? handleTaskSave(drawerRef.form) : handleBoardSave(drawerRef.form)" 
+          <button
+            @click="activeDrawer === TaskDrawer ? handleTaskSave(drawerRef.form) : handleBoardSave(drawerRef.form)"
             class="flex-1 bg-brand-primary text-brand-container py-3 rounded-xl font-bold uppercase tracking-widest text-[10px] hover:bg-brand-primary/90 transition-all shadow-md"
           >
             Save Changes
           </button>
-          
-          <button 
-            v-if="selectedTodo"
-            @click="deleteTask(selectedTodo)"
-            class="w-10 h-10 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center shrink-0"
-          >
+
+          <button v-if="selectedTodo" @click="deleteTask(selectedTodo)" class="w-10 h-10 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center shrink-0">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
             </svg>

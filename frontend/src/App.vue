@@ -16,7 +16,7 @@ const handleLogout = () => {
 </script>
 
 <template>
-  <div class="flex min-h-screen bg-brand-background text-brand-text">
+  <div class="flex min-h-screen bg-brand-background text-brand-text overflow-x-hidden">
     <!-- Sidebar - only show if not on auth pages -->
     <aside v-if="!isAuthPage" class="w-64 bg-brand-container text-purple-200 flex flex-col shadow-2xl border-r border-purple-900/30">
       <div class="p-6">

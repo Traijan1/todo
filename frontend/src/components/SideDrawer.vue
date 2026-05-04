@@ -11,7 +11,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   title: 'Details',
-  width: 'w-[450px]'
+  width: 'w-[600px]'
 });
 
 const emit = defineEmits<{
