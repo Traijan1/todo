@@ -55,7 +55,7 @@ export const useAuthStore = defineStore("auth", () => {
     error.value = null;
 
     try {
-      const response = await axios.post("http://localhost:5150/api/auth/login", payload);
+      const response = await axios.post("/api/auth/login", payload);
 
       const { token: newToken, ...userData } = response.data;
       setAuth(newToken, userData as User);
