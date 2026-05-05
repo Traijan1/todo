@@ -65,7 +65,7 @@ pub fn get_tools_list() -> Value {
                     },
                     "details": {
                         "type": "string",
-                        "description": "The details of the todo (optional)"
+                        "description": "The details of the todo (optional) in HTML"
                     }
                 },
                 "required": ["board_pid", "title"]

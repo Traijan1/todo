@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, nextTick } from "vue";
 import type { Todo } from "../../../api/models";
+import TiptapEditor from "../../../components/editor/TiptapEditor.vue";
 
 const props = defineProps<{
   todo: Todo | null;
@@ -69,7 +70,7 @@ defineExpose({
 
     <div class="space-y-2">
       <label class="brand-label">Description</label>
-      <textarea v-model="form.description" placeholder="Map out the steps..." rows="12" class="brand-textarea h-auto min-h-[200px]"></textarea>
+      <TiptapEditor v-model="form.description" placeholder="Map out the steps..." />
     </div>
   </div>
 </template>

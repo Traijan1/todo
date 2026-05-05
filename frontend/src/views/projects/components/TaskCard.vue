@@ -19,7 +19,7 @@ defineEmits<{
     <div class="flex-1 min-w-0">
       <p class="text-sm font-bold text-brand-text group-hover/todo:text-brand-primary transition-colors leading-tight truncate">{{ todo.title }}</p>
       <p v-if="todo.details" class="text-[10px] text-brand-text-muted truncate font-medium opacity-60 mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis">
-        {{ todo.details.replace(/[#*`]/g, '') }}
+        {{ todo.details.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() }}
       </p>
     </div>
 
