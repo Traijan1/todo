@@ -20,13 +20,9 @@ const auth = useAuthStore();
       </div>
     </header>
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-      <Card title="Projects">
+    <div class="gap-8">
+      <Card title="Projects" :no-background="true">
         <ProjectIndex />
-      </Card>
-
-      <Card title="System Status">
-        <LocoSplash />
       </Card>
     </div>
   </div>

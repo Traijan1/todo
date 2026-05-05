@@ -12,8 +12,8 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div>
-    <div v-for="project in projects" :key="project.pid" class="text-brand-primary">
+  <div class="flex flex-col gap-y-4">
+    <div v-for="project in projects" :key="project.pid" class="text-brand-primary bg-brand-background/30 border border-brand-primary/5 p-4 rounded-lg">
       <RouterLink :to="{ name: 'project-detail', params: { pid: project.pid } }">{{ project.title }}</RouterLink>
     </div>
   </div>
