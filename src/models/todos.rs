@@ -132,45 +132,24 @@ impl Model {
         Ok(())
     }
 
+    /// Replaces all tags on this todo. `tag_pids` is a list of tag PIDs (UUIDs as strings).
     pub async fn sync_tags<C>(
         &self,
         db: &C,
-        tag_titles: Vec<String>,
-        user: &users::Model,
+        tag_pids: Vec<String>,
+        _user: &users::Model,
     ) -> ModelResult<()>
     where
         C: ConnectionTrait,
     {
-        // Remove existing links
         todos_tags::Entity::delete_many()
             .filter(crate::models::_entities::todos_tags::Column::TodoId.eq(self.id))
             .exec(db)
             .await
             .map_err(|e| ModelError::Any(e.into()))?;
 
-        for title in tag_titles {
-            // Find or create tag
-            let tag = tags::Entity::find()
-                .filter(crate::models::_entities::tags::Column::Title.eq(title.clone()))
-                .filter(crate::models::_entities::tags::Column::UserId.eq(user.id))
-                .one(db)
-                .await
-                .map_err(|e| ModelError::Any(e.into()))?;
-
-            let tag = if let Some(tag) = tag {
-                tag
-            } else {
-                tags::ActiveModel {
-                    title: Set(title),
-                    user_id: Set(user.id),
-                    ..Default::default()
-                }
-                .insert(db)
-                .await
-                .map_err(|e| ModelError::Any(e.into()))?
-            };
-
-            // Link tag to todo
+        for pid_str in tag_pids {
+            let tag = tags::Model::find_by_pid(db, &pid_str).await?;
             todos_tags::ActiveModel {
                 todo_id: Set(self.id),
                 tag_id: Set(tag.id),
