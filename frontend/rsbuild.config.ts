@@ -1,12 +1,20 @@
 import { defineConfig } from "@rsbuild/core";
 import { pluginVue } from "@rsbuild/plugin-vue";
 
-// https://rsbuild.dev/guide/basic/configure-rsbuild
 export default defineConfig({
   plugins: [pluginVue()],
   html: {
     favicon: "src/assets/favicon.ico",
-    title: "Loco SaaS Starter",
+    title: "Todo",
+    tags: [
+      { tag: "link", attrs: { rel: "manifest", href: "/manifest.webmanifest" } },
+      { tag: "meta", attrs: { name: "theme-color", content: "#E0BBE4" } },
+      { tag: "meta", attrs: { name: "mobile-web-app-capable", content: "yes" } },
+      { tag: "meta", attrs: { name: "apple-mobile-web-app-capable", content: "yes" } },
+      { tag: "meta", attrs: { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" } },
+      { tag: "meta", attrs: { name: "apple-mobile-web-app-title", content: "Todo" } },
+      { tag: "link", attrs: { rel: "apple-touch-icon", href: "/apple-touch-icon.png" } },
+    ],
   },
   server: {
     proxy: {
@@ -14,7 +22,7 @@ export default defineConfig({
         target: "http://localhost:5150",
         changeOrigin: true,
         secure: false,
-        pathRewrite: { '^/api': '/api' }
+        pathRewrite: { "^/api": "/api" },
       },
     },
   },

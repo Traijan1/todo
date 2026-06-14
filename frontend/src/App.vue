@@ -21,7 +21,7 @@ const handleLogout = () => {
     
     <!-- Mobile Header -->
     <header v-if="!isAuthPage" class="lg:hidden flex items-center justify-between p-4 bg-brand-container border-b border-brand-primary/10 fixed top-0 left-0 right-0 z-40">
-      <h1 class="text-lg font-bold tracking-tight text-brand-primary">Loco Todo</h1>
+      <h1 class="text-lg font-bold tracking-tight text-brand-primary">Todo</h1>
       <button @click="isSidebarOpen = !isSidebarOpen" class="p-2 text-brand-primary bg-brand-primary/10 hover:bg-brand-primary/20 rounded-lg transition-colors">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path v-if="!isSidebarOpen" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -46,7 +46,7 @@ const handleLogout = () => {
       ]"
     >
       <div class="p-6 hidden lg:block">
-        <h1 class="text-2xl font-bold tracking-tight text-brand-primary">Loco Todo</h1>
+        <h1 class="text-2xl font-bold tracking-tight text-brand-primary">Todo</h1>
       </div>
       
       <nav class="flex-1 px-4 space-y-2 mt-4 lg:mt-0">
