@@ -165,7 +165,7 @@ fn error_response(id: Option<Value>, code: i32, message: &str) -> Value {
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("api/mcp")
-        .add("/", post(http_handler))        // Streamable HTTP (claude.ai)
+        .add("/http", post(http_handler))    // Streamable HTTP (claude.ai)
         .add("/sse", get(sse_handler))       // Legacy SSE (Claude Code CLI)
         .add("/messages", post(message_handler))
 }
