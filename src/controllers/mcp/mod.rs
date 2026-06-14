@@ -23,17 +23,17 @@ pub struct McpParams {
     pub session_id: String,
 }
 
+// ── Legacy SSE transport (Claude Code CLI) ───────────────────────────────────
+
 pub async fn sse_handler() -> Sse<impl Stream<Item = std::result::Result<Event, Infallible>>> {
     let session_id = uuid::Uuid::new_v4().to_string();
     let (tx, rx) = mpsc::channel::<Event>(100);
 
-    // Initial event telling the client where to send POST messages
     let endpoint_url = format!("/api/mcp/messages?session_id={}", session_id);
     let _ = tx
         .send(Event::default().event("endpoint").data(endpoint_url))
         .await;
 
-    // Store the sender so POST requests can find it
     let mut sessions = SESSIONS.lock().await;
     sessions.insert(session_id, tx);
 
@@ -61,15 +61,35 @@ pub async fn message_handler(
         _ => error_response(id, -32601, "Method not found"),
     };
 
-    // Send the response back through the SSE stream
     let event = Event::default()
         .event("message")
         .data(serde_json::to_string(&response).unwrap());
-
     let _ = tx.send(event).await;
 
     format::empty()
 }
+
+// ── Streamable HTTP transport (claude.ai web) ────────────────────────────────
+
+pub async fn http_handler(
+    State(ctx): State<AppContext>,
+    Json(payload): Json<Value>,
+) -> Result<Response> {
+    let id = payload.get("id").cloned();
+    let method = payload.get("method").and_then(|m| m.as_str()).unwrap_or("");
+
+    let response = match method {
+        "initialize" => handle_initialize(id),
+        "notifications/initialized" => return format::empty(),
+        "tools/list" => handle_tools_list(id),
+        "tools/call" => handle_tools_call(&ctx, id, &payload).await?,
+        _ => error_response(id, -32601, "Method not found"),
+    };
+
+    format::json(response)
+}
+
+// ── Shared helpers ────────────────────────────────────────────────────────────
 
 fn handle_initialize(id: Option<Value>) -> Value {
     json!({
@@ -77,13 +97,8 @@ fn handle_initialize(id: Option<Value>) -> Value {
         "id": id,
         "result": {
             "protocolVersion": "2024-11-05",
-            "capabilities": {
-                "tools": {}
-            },
-            "serverInfo": {
-                "name": "Loco Todo MCP",
-                "version": "1.0.0"
-            }
+            "capabilities": { "tools": {} },
+            "serverInfo": { "name": "Todo MCP", "version": "1.0.0" }
         }
     })
 }
@@ -92,9 +107,7 @@ fn handle_tools_list(id: Option<Value>) -> Value {
     json!({
         "jsonrpc": "2.0",
         "id": id,
-        "result": {
-            "tools": schema::get_tools_list()
-        }
+        "result": { "tools": schema::get_tools_list() }
     })
 }
 
@@ -129,20 +142,16 @@ async fn handle_tools_call(ctx: &AppContext, id: Option<Value>, payload: &Value)
         "update_todo"     => actions::update_todo(ctx, args).await?,
         "delete_todo"     => actions::delete_todo(ctx, args).await?,
         // Tags
-        "get_tags"           => actions::get_tags(ctx).await?,
-        "create_tag"         => actions::create_tag(ctx, args).await?,
-        "update_tag"         => actions::update_tag(ctx, args).await?,
-        "delete_tag"         => actions::delete_tag(ctx, args).await?,
-        "add_tag_to_todo"    => actions::add_tag_to_todo(ctx, args).await?,
+        "get_tags"             => actions::get_tags(ctx).await?,
+        "create_tag"           => actions::create_tag(ctx, args).await?,
+        "update_tag"           => actions::update_tag(ctx, args).await?,
+        "delete_tag"           => actions::delete_tag(ctx, args).await?,
+        "add_tag_to_todo"      => actions::add_tag_to_todo(ctx, args).await?,
         "remove_tag_from_todo" => actions::remove_tag_from_todo(ctx, args).await?,
         _ => return Ok(error_response(id, -32601, "Tool not found")),
     };
 
-    Ok(json!({
-        "jsonrpc": "2.0",
-        "id": id,
-        "result": result
-    }))
+    Ok(json!({ "jsonrpc": "2.0", "id": id, "result": result }))
 }
 
 fn error_response(id: Option<Value>, code: i32, message: &str) -> Value {
@@ -156,6 +165,7 @@ fn error_response(id: Option<Value>, code: i32, message: &str) -> Value {
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("api/mcp")
-        .add("/sse", get(sse_handler))
+        .add("/", post(http_handler))        // Streamable HTTP (claude.ai)
+        .add("/sse", get(sse_handler))       // Legacy SSE (Claude Code CLI)
         .add("/messages", post(message_handler))
 }
