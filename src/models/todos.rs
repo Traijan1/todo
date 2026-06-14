@@ -110,12 +110,14 @@ impl Model {
     where
         C: ConnectionTrait,
     {
-        let link = todos_tags::ActiveModel {
+        todos_tags::Entity::insert(todos_tags::ActiveModel {
             todo_id: Set(self.id),
             tag_id: Set(tag.id),
             ..Default::default()
-        };
-        link.insert(db).await.map_err(|e| ModelError::Any(e.into()))?;
+        })
+        .exec_without_returning(db)
+        .await
+        .map_err(|e| ModelError::Any(e.into()))?;
         Ok(())
     }
 
@@ -150,12 +152,12 @@ impl Model {
 
         for pid_str in tag_pids {
             let tag = tags::Model::find_by_pid(db, &pid_str).await?;
-            todos_tags::ActiveModel {
+            todos_tags::Entity::insert(todos_tags::ActiveModel {
                 todo_id: Set(self.id),
                 tag_id: Set(tag.id),
                 ..Default::default()
-            }
-            .insert(db)
+            })
+            .exec_without_returning(db)
             .await
             .map_err(|e| ModelError::Any(e.into()))?;
         }
