@@ -42,8 +42,26 @@ impl Model {
     {
         let pid = Uuid::parse_str(pid).map_err(|_| ModelError::EntityNotFound)?;
         let item = Entity::find().filter(Column::Pid.eq(pid)).one(db).await?;
-
         item.ok_or(ModelError::EntityNotFound)
+    }
+
+    pub async fn find_or_create_by_title<C>(
+        db: &C,
+        title: &str,
+        user: &users::Model,
+    ) -> ModelResult<Self>
+    where
+        C: ConnectionTrait,
+    {
+        if let Some(tag) = Entity::find()
+            .filter(Column::Title.eq(title))
+            .filter(Column::UserId.eq(user.id))
+            .one(db)
+            .await?
+        {
+            return Ok(tag);
+        }
+        Self::create(db, &TagParams { title: title.to_string(), color: None }, user).await
     }
 
     pub async fn create<C>(db: &C, params: &TagParams, user: &users::Model) -> ModelResult<Self>

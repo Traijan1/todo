@@ -126,7 +126,7 @@ pub fn get_tools_list() -> Value {
                     "tags": {
                         "type": "array",
                         "items": { "type": "string" },
-                        "description": "Tag PIDs to assign (optional)"
+                        "description": "Tag names to assign, e.g. [\"urgent\", \"bug\"]. Tags are created automatically if they don't exist."
                     }
                 },
                 "required": ["board_pid", "title"]
@@ -145,7 +145,7 @@ pub fn get_tools_list() -> Value {
                     "tags": {
                         "type": "array",
                         "items": { "type": "string" },
-                        "description": "Full list of tag PIDs to set (replaces existing tags)"
+                        "description": "Full list of tag names to set, e.g. [\"urgent\", \"bug\"]. Replaces existing tags. Tags are created automatically if they don't exist."
                     }
                 },
                 "required": ["todo_pid"]

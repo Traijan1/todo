@@ -138,14 +138,22 @@ const toggleTagFilter = (pid: string) => {
   }
 };
 
-const tagFilterStyle = (color?: string) => {
+const tagChipStyle = (color?: string, active = false) => {
   const c = color || "#E0BBE4";
-  return {
-    backgroundColor: `${c}22`,
-    color: c,
-    borderColor: `${c}44`,
-  };
+  if (active) {
+    return { backgroundColor: `${c}33`, color: c, borderColor: `${c}88`, boxShadow: `0 0 12px ${c}22` };
+  }
+  return { backgroundColor: `${c}0d`, color: `${c}99`, borderColor: `${c}22` };
 };
+
+const totalVisible = computed(() => {
+  if (!activeTagFilters.value.length) return null;
+  return boards.value.reduce((sum, board) => {
+    return sum + board.todos.filter((t) =>
+      t.tags?.some((tag) => activeTagFilters.value.includes(tag.pid))
+    ).length;
+  }, 0);
+});
 
 onMounted(async () => {
   if (!project.value) await projectStore.fetchProjects();
@@ -159,33 +167,59 @@ onMounted(async () => {
 <template>
   <div class="flex-1 flex flex-col min-w-0 h-full overflow-hidden" @click="closeDrawer">
     <!-- Header -->
-    <header class="mb-4 shrink-0">
+    <header class="mb-3 shrink-0">
       <h2 class="text-xl font-bold text-brand-primary tracking-tight truncate">{{ project?.title || "Loading..." }}</h2>
+    </header>
 
-      <!-- Tag filter bar -->
-      <div v-if="tagStore.tags.length" class="flex items-center gap-2 mt-2 flex-wrap">
-        <span class="text-[9px] font-black uppercase tracking-widest text-brand-primary/30 shrink-0">Filter</span>
+    <!-- Tag Filter Bar -->
+    <div v-if="tagStore.tags.length" class="shrink-0 mb-4" @click.stop>
+      <div class="flex items-center gap-2 flex-wrap">
+        <!-- All chip -->
+        <button
+          type="button"
+          class="flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all duration-200"
+          :class="!activeTagFilters.length
+            ? 'bg-brand-primary/20 text-brand-primary border-brand-primary/40 shadow-[0_0_12px_rgba(224,187,228,0.15)]'
+            : 'bg-white/5 text-brand-text-muted/50 border-white/5 hover:text-brand-text-muted hover:bg-white/10'"
+          @click="activeTagFilters = []"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+          All
+        </button>
+
+        <!-- Divider -->
+        <div class="w-px h-4 bg-brand-primary/10 shrink-0" />
+
+        <!-- Tag chips -->
         <button
           v-for="tag in tagStore.tags"
           :key="tag.pid"
           type="button"
-          class="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border transition-all"
-          :class="activeTagFilters.includes(tag.pid) ? 'ring-2 ring-white/20' : 'opacity-40 hover:opacity-80'"
-          :style="tagFilterStyle(tag.color)"
-          @click.stop="toggleTagFilter(tag.pid)"
+          class="flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border transition-all duration-200"
+          :style="tagChipStyle(tag.color, activeTagFilters.includes(tag.pid))"
+          @click="toggleTagFilter(tag.pid)"
         >
+          <span
+            class="w-1.5 h-1.5 rounded-full shrink-0"
+            :style="{ backgroundColor: tag.color || '#E0BBE4' }"
+          />
           {{ tag.title }}
+          <span v-if="activeTagFilters.includes(tag.pid)" class="opacity-60 -ml-0.5">×</span>
         </button>
-        <button
-          v-if="activeTagFilters.length"
-          type="button"
-          class="text-[9px] font-bold uppercase tracking-widest text-brand-text-muted hover:text-brand-text transition-colors px-1"
-          @click.stop="activeTagFilters = []"
-        >
-          Clear
-        </button>
+
+        <!-- Result count -->
+        <Transition name="fade-count">
+          <span
+            v-if="totalVisible !== null"
+            class="ml-auto text-[9px] font-bold uppercase tracking-widest text-brand-text-muted/40"
+          >
+            {{ totalVisible }} found
+          </span>
+        </Transition>
       </div>
-    </header>
+    </div>
 
     <!-- Boards Container -->
     <div
@@ -265,5 +299,14 @@ onMounted(async () => {
 .custom-scrollbar-y::-webkit-scrollbar-thumb {
   background: rgba(var(--brand-primary-rgb), 0.1);
   border-radius: 20px;
+}
+
+.fade-count-enter-active,
+.fade-count-leave-active {
+  transition: opacity 0.2s ease;
+}
+.fade-count-enter-from,
+.fade-count-leave-to {
+  opacity: 0;
 }
 </style>

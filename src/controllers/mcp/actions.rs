@@ -11,15 +11,25 @@ use loco_rs::prelude::*;
 use sea_orm::Set;
 use serde_json::{json, Value};
 
-fn first_user_err() -> Error {
-    Error::NotFound
-}
-
 async fn get_user(ctx: &AppContext) -> Result<users::Model> {
     users::Entity::find()
         .one(&ctx.db)
         .await?
-        .ok_or_else(first_user_err)
+        .ok_or(Error::NotFound)
+}
+
+/// Resolve tag names → PIDs, creating tags that don't exist yet.
+async fn resolve_tag_names(
+    ctx: &AppContext,
+    names: &[String],
+    user: &users::Model,
+) -> Result<Vec<String>> {
+    let mut pids = Vec::new();
+    for name in names {
+        let tag = tags_model::Model::find_or_create_by_title(&ctx.db, name, user).await?;
+        pids.push(tag.pid.to_string());
+    }
+    Ok(pids)
 }
 
 // ── Projects ────────────────────────────────────────────────────────────────
@@ -191,19 +201,26 @@ pub async fn add_todo(ctx: &AppContext, args: &Value) -> Result<Value> {
         .ok_or_else(|| Error::BadRequest("board_pid required".into()))?;
     let title = args.get("title").and_then(|v| v.as_str()).unwrap_or_default();
     let details = args.get("details").and_then(|v| v.as_str());
-    let tags = args
+    let user = get_user(ctx).await?;
+
+    let tag_names: Vec<String> = args
         .get("tags")
         .and_then(|v| v.as_array())
-        .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect());
+        .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+        .unwrap_or_default();
+    let tag_pids = if tag_names.is_empty() {
+        None
+    } else {
+        Some(resolve_tag_names(ctx, &tag_names, &user).await?)
+    };
 
-    let user = get_user(ctx).await?;
     let board = boards::Model::find_by_pid(&ctx.db, board_pid).await?;
     let todo = todos::Model::create(
         &ctx.db,
         &TodoParams {
             title: title.to_string(),
             details: details.map(|s| s.to_string()),
-            tags,
+            tags: tag_pids,
         },
         &board,
         &user,
@@ -237,12 +254,13 @@ pub async fn update_todo(ctx: &AppContext, args: &Value) -> Result<Value> {
 
     let _updated = active.update(&ctx.db).await?;
 
-    if let Some(tags) = args
+    if let Some(tag_names) = args
         .get("tags")
         .and_then(|v| v.as_array())
         .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect::<Vec<_>>())
     {
-        item.sync_tags(&ctx.db, tags, &user).await?;
+        let tag_pids = resolve_tag_names(ctx, &tag_names, &user).await?;
+        item.sync_tags(&ctx.db, tag_pids, &user).await?;
     }
 
     let updated = todos::Model::find_by_pid(&ctx.db, pid).await?;
@@ -268,8 +286,12 @@ pub async fn delete_todo(ctx: &AppContext, args: &Value) -> Result<Value> {
 
 pub async fn get_tags(ctx: &AppContext) -> Result<Value> {
     let items = tags_entity::Entity::find().all(&ctx.db).await?;
+    let clean: Vec<Value> = items
+        .iter()
+        .map(|t| json!({ "name": t.title, "color": t.color }))
+        .collect();
     Ok(json!({
-        "content": [{ "type": "text", "text": serde_json::to_string_pretty(&items).unwrap_or_default() }]
+        "content": [{ "type": "text", "text": serde_json::to_string_pretty(&clean).unwrap_or_default() }]
     }))
 }
 
