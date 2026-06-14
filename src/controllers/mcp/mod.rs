@@ -112,14 +112,28 @@ async fn handle_tools_call(ctx: &AppContext, id: Option<Value>, payload: &Value)
         .unwrap_or(&default_args);
 
     let result = match tool_name {
-        "get_projects" => actions::get_projects(ctx).await?,
-        "get_todos" => actions::get_todos(ctx, args).await?,
-        "get_todo" => actions::get_todo(ctx, args).await?,
-        "get_boards" => actions::get_boards(ctx, args).await?,
-        "add_todo" => actions::add_todo(ctx, args).await?,
-        "add_board" => actions::add_board(ctx, args).await?,
-        "get_tags" => actions::get_tags(ctx).await?,
-        "add_tag_to_todo" => actions::add_tag_to_todo(ctx, args).await?,
+        // Projects
+        "get_projects"    => actions::get_projects(ctx).await?,
+        "add_project"     => actions::add_project(ctx, args).await?,
+        "update_project"  => actions::update_project(ctx, args).await?,
+        "delete_project"  => actions::delete_project(ctx, args).await?,
+        // Boards
+        "get_boards"      => actions::get_boards(ctx, args).await?,
+        "add_board"       => actions::add_board(ctx, args).await?,
+        "update_board"    => actions::update_board(ctx, args).await?,
+        "delete_board"    => actions::delete_board(ctx, args).await?,
+        // Todos
+        "get_todos"       => actions::get_todos(ctx, args).await?,
+        "get_todo"        => actions::get_todo(ctx, args).await?,
+        "add_todo"        => actions::add_todo(ctx, args).await?,
+        "update_todo"     => actions::update_todo(ctx, args).await?,
+        "delete_todo"     => actions::delete_todo(ctx, args).await?,
+        // Tags
+        "get_tags"           => actions::get_tags(ctx).await?,
+        "create_tag"         => actions::create_tag(ctx, args).await?,
+        "update_tag"         => actions::update_tag(ctx, args).await?,
+        "delete_tag"         => actions::delete_tag(ctx, args).await?,
+        "add_tag_to_todo"    => actions::add_tag_to_todo(ctx, args).await?,
         "remove_tag_from_todo" => actions::remove_tag_from_todo(ctx, args).await?,
         _ => return Ok(error_response(id, -32601, "Tool not found")),
     };
