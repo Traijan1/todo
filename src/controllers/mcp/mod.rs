@@ -118,6 +118,9 @@ async fn handle_tools_call(ctx: &AppContext, id: Option<Value>, payload: &Value)
         "get_boards" => actions::get_boards(ctx, args).await?,
         "add_todo" => actions::add_todo(ctx, args).await?,
         "add_board" => actions::add_board(ctx, args).await?,
+        "get_tags" => actions::get_tags(ctx).await?,
+        "add_tag_to_todo" => actions::add_tag_to_todo(ctx, args).await?,
+        "remove_tag_from_todo" => actions::remove_tag_from_todo(ctx, args).await?,
         _ => return Ok(error_response(id, -32601, "Tool not found")),
     };
 

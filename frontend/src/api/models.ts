@@ -13,6 +13,12 @@ export interface Project {
   updated_at: string;
 }
 
+export interface Tag {
+  pid: string;
+  title: string;
+  color?: string;
+}
+
 export interface Todo {
   pid: string;
   title: string;
@@ -21,6 +27,7 @@ export interface Todo {
   position: number;
   created_at: string;
   updated_at: string;
+  tags?: Tag[];
 }
 
 export interface Board {

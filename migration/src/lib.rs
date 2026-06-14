@@ -8,6 +8,7 @@ mod m20260502_092455_boards;
 mod m20260502_140120_todos;
 mod m20260503_124519_add_position_to_todos;
 mod m20260503_212143_add_position_to_boards;
+mod m20260506_140547_tags;
 pub struct Migrator;
 
 #[async_trait::async_trait]
@@ -20,6 +21,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260502_140120_todos::Migration),
             Box::new(m20260503_124519_add_position_to_todos::Migration),
             Box::new(m20260503_212143_add_position_to_boards::Migration),
+            Box::new(m20260506_140547_tags::Migration),
             // inject-above (do not remove this comment)
         ]
     }

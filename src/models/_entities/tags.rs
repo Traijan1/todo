@@ -4,7 +4,7 @@ use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize)]
-#[sea_orm(table_name = "todos")]
+#[sea_orm(table_name = "tags")]
 pub struct Model {
     pub created_at: DateTimeWithTimeZone,
     pub updated_at: DateTimeWithTimeZone,
@@ -13,30 +13,22 @@ pub struct Model {
     #[sea_orm(unique)]
     pub pid: Uuid,
     pub title: String,
-    #[sea_orm(column_type = "Text", nullable)]
-    pub details: Option<String>,
-    pub board_id: i32,
-    pub position: i32,
+    pub color: Option<String>,
+    pub user_id: i32,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
+    #[sea_orm(has_many = "super::todos_tags::Entity")]
+    TodosTags,
     #[sea_orm(
-        belongs_to = "super::boards::Entity",
-        from = "Column::BoardId",
-        to = "super::boards::Column::Id",
+        belongs_to = "super::users::Entity",
+        from = "Column::UserId",
+        to = "super::users::Column::Id",
         on_update = "Cascade",
         on_delete = "Cascade"
     )]
-    Boards,
-    #[sea_orm(has_many = "super::todos_tags::Entity")]
-    TodosTags,
-}
-
-impl Related<super::boards::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::Boards.def()
-    }
+    Users,
 }
 
 impl Related<super::todos_tags::Entity> for Entity {
@@ -45,11 +37,17 @@ impl Related<super::todos_tags::Entity> for Entity {
     }
 }
 
-impl Related<super::tags::Entity> for Entity {
+impl Related<super::users::Entity> for Entity {
     fn to() -> RelationDef {
-        super::todos_tags::Relation::Tags.def()
+        Relation::Users.def()
+    }
+}
+
+impl Related<super::todos::Entity> for Entity {
+    fn to() -> RelationDef {
+        super::todos_tags::Relation::Todos.def()
     }
     fn via() -> Option<RelationDef> {
-        Some(super::todos_tags::Relation::Todos.def().rev())
+        Some(super::todos_tags::Relation::Tags.def().rev())
     }
 }

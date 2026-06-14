@@ -88,5 +88,49 @@ pub fn get_tools_list() -> Value {
                 }
             }
         },
+        {
+            "name": "get_tags",
+            "description": "List all available tags",
+            "inputSchema": {
+                "type": "object",
+                "properties": {}
+            }
+        },
+        {
+            "name": "add_tag_to_todo",
+            "description": "Add an existing tag to a todo",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "todo_pid": {
+                        "type": "string",
+                        "description": "The UUID (PID) of the todo"
+                    },
+                    "tag_pid": {
+                        "type": "string",
+                        "description": "The UUID (PID) of the tag"
+                    }
+                },
+                "required": ["todo_pid", "tag_pid"]
+            }
+        },
+        {
+            "name": "remove_tag_from_todo",
+            "description": "Remove a tag from a todo",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "todo_pid": {
+                        "type": "string",
+                        "description": "The UUID (PID) of the todo"
+                    },
+                    "tag_pid": {
+                        "type": "string",
+                        "description": "The UUID (PID) of the tag"
+                    }
+                },
+                "required": ["todo_pid", "tag_pid"]
+            }
+        },
     ])
 }

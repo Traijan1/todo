@@ -54,8 +54,6 @@ pub async fn add(
             e
         })?;
 
-    tracing::debug!("User found: id={}", user.id);
-
     let txn = ctx.db.begin().await?;
 
     let mut item = ActiveModel {
@@ -70,22 +68,18 @@ pub async fn add(
         e
     })?;
 
-    tracing::debug!("Project inserted: id={}", item.id);
-
     let project_user = users_projects::ActiveModel {
         user_id: Set(user.id),
         project_id: Set(item.id),
         ..Default::default()
     };
 
-    tracing::debug!("Inserting users_projects link...");
     project_user.insert(&txn).await.map_err(|e| {
         tracing::error!("Failed to insert users_projects link: {:?}", e);
         e
     })?;
 
     txn.commit().await?;
-    tracing::debug!("Transaction committed.");
 
     format::json(item)
 }

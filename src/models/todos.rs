@@ -1,6 +1,6 @@
 use crate::models::{
     _entities::todos::{self, Column},
-    boards,
+    boards, tags, todos_tags, users,
 };
 
 pub use super::_entities::todos::{ActiveModel, Entity, Model};
@@ -13,6 +13,7 @@ pub type Todos = Entity;
 pub struct TodoParams {
     pub title: String,
     pub details: Option<String>,
+    pub tags: Option<Vec<String>>,
 }
 
 #[derive(Debug, Validate, Deserialize)]
@@ -77,12 +78,17 @@ impl Model {
         Ok(items)
     }
 
-    pub async fn create<C>(db: &C, params: &TodoParams, board: &boards::Model) -> ModelResult<Self>
+    pub async fn create<C>(
+        db: &C,
+        params: &TodoParams,
+        board: &boards::Model,
+        user: &users::Model,
+    ) -> ModelResult<Self>
     where
         C: ConnectionTrait,
     {
         let count = board.todo_count(db).await?;
-        ActiveModel {
+        let item = ActiveModel {
             title: Set(params.title.clone()),
             details: Set(params.details.clone()),
             board_id: Set(board.id),
@@ -91,7 +97,91 @@ impl Model {
         }
         .insert(db)
         .await
-        .map_err(|e| ModelError::Any(e.into()))
+        .map_err(|e| ModelError::Any(e.into()))?;
+
+        if let Some(tags) = &params.tags {
+            item.sync_tags(db, tags.clone(), user).await?;
+        }
+
+        Ok(item)
+    }
+
+    pub async fn add_tag<C>(&self, db: &C, tag: &tags::Model) -> ModelResult<()>
+    where
+        C: ConnectionTrait,
+    {
+        let link = todos_tags::ActiveModel {
+            todo_id: Set(self.id),
+            tag_id: Set(tag.id),
+            ..Default::default()
+        };
+        link.insert(db).await.map_err(|e| ModelError::Any(e.into()))?;
+        Ok(())
+    }
+
+    pub async fn remove_tag<C>(&self, db: &C, tag: &tags::Model) -> ModelResult<()>
+    where
+        C: ConnectionTrait,
+    {
+        todos_tags::Entity::delete_many()
+            .filter(crate::models::_entities::todos_tags::Column::TodoId.eq(self.id))
+            .filter(crate::models::_entities::todos_tags::Column::TagId.eq(tag.id))
+            .exec(db)
+            .await
+            .map_err(|e| ModelError::Any(e.into()))?;
+        Ok(())
+    }
+
+    pub async fn sync_tags<C>(
+        &self,
+        db: &C,
+        tag_titles: Vec<String>,
+        user: &users::Model,
+    ) -> ModelResult<()>
+    where
+        C: ConnectionTrait,
+    {
+        // Remove existing links
+        todos_tags::Entity::delete_many()
+            .filter(crate::models::_entities::todos_tags::Column::TodoId.eq(self.id))
+            .exec(db)
+            .await
+            .map_err(|e| ModelError::Any(e.into()))?;
+
+        for title in tag_titles {
+            // Find or create tag
+            let tag = tags::Entity::find()
+                .filter(crate::models::_entities::tags::Column::Title.eq(title.clone()))
+                .filter(crate::models::_entities::tags::Column::UserId.eq(user.id))
+                .one(db)
+                .await
+                .map_err(|e| ModelError::Any(e.into()))?;
+
+            let tag = if let Some(tag) = tag {
+                tag
+            } else {
+                tags::ActiveModel {
+                    title: Set(title),
+                    user_id: Set(user.id),
+                    ..Default::default()
+                }
+                .insert(db)
+                .await
+                .map_err(|e| ModelError::Any(e.into()))?
+            };
+
+            // Link tag to todo
+            todos_tags::ActiveModel {
+                todo_id: Set(self.id),
+                tag_id: Set(tag.id),
+                ..Default::default()
+            }
+            .insert(db)
+            .await
+            .map_err(|e| ModelError::Any(e.into()))?;
+        }
+
+        Ok(())
     }
 }
 

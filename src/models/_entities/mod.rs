@@ -4,6 +4,8 @@ pub mod prelude;
 
 pub mod boards;
 pub mod projects;
+pub mod tags;
 pub mod todos;
+pub mod todos_tags;
 pub mod users;
 pub mod users_projects;
