@@ -81,7 +81,7 @@ const copyPid = async () => {
         </div>
 
         <!-- Footer -->
-        <footer v-if="$slots.footer" class="p-6 bg-brand-background/20 border-t border-white/5">
+        <footer v-if="$slots.footer" class="p-6 bg-brand-background/20 border-t border-white/5" style="padding-bottom: max(1.5rem, env(safe-area-inset-bottom))">
           <slot name="footer" />
         </footer>
       </div>

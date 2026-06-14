@@ -6,6 +6,9 @@ export default defineConfig({
   html: {
     favicon: "src/assets/favicon.ico",
     title: "Todo",
+    meta: {
+      viewport: "width=device-width, initial-scale=1.0, viewport-fit=cover",
+    },
     tags: [
       { tag: "link", attrs: { rel: "manifest", href: "/manifest.webmanifest" } },
       { tag: "meta", attrs: { name: "theme-color", content: "#E0BBE4" } },

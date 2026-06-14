@@ -31,6 +31,19 @@ body {
   font-family: "Arimo", -apple-system, blinkmacsystemfont, "Segoe UI", roboto, "Helvetica Neue", arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   background: var(--color-brand-background);
   color: var(--color-brand-text);
+  /* Prevent overscroll bounce showing white background */
+  overscroll-behavior: none;
+}
+
+/* Safe area utilities for PWA standalone mode (notch/home indicator) */
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.h-safe-top {
+  height: env(safe-area-inset-top);
 }
 
 #app {
