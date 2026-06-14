@@ -3,29 +3,49 @@ import type { Todo } from "../../../api/models";
 
 defineProps<{
   todo: Todo;
+  filterTags?: string[];
 }>();
 
 defineEmits<{
-  (e: 'click', event: MouseEvent): void;
-  (e: 'delete'): void;
+  (e: "click", event: MouseEvent): void;
+  (e: "delete"): void;
 }>();
+
+const tagStyle = (color?: string) => {
+  const c = color || "#E0BBE4";
+  return {
+    backgroundColor: `${c}22`,
+    color: c,
+    borderColor: `${c}44`,
+  };
+};
 </script>
 
 <template>
-  <div 
-    @click="$emit('click', $event)" 
+  <div
+    @click="$emit('click', $event)"
     class="relative bg-brand-background/60 p-2.5 px-4 rounded-xl border border-white/5 hover:border-brand-primary/20 transition-all cursor-pointer shadow-sm group/todo flex items-center gap-4"
   >
     <div class="flex-1 min-w-0">
       <p class="text-sm font-bold text-brand-text group-hover/todo:text-brand-primary transition-colors leading-tight truncate">{{ todo.title }}</p>
       <p v-if="todo.details" class="text-[10px] text-brand-text-muted truncate font-medium opacity-60 mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis">
-        {{ todo.details.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() }}
+        {{ todo.details.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim() }}
       </p>
+      <div v-if="todo.tags?.length" class="flex flex-wrap gap-1 mt-1.5">
+        <span
+          v-for="tag in todo.tags"
+          :key="tag.pid"
+          class="px-1.5 py-px rounded-full text-[9px] font-bold uppercase tracking-wider border"
+          :style="tagStyle(tag.color)"
+        >
+          {{ tag.title }}
+        </span>
+      </div>
     </div>
 
     <div class="flex items-center gap-3 shrink-0">
-      <button 
-        @click.stop="$emit('delete')" 
+      <button
+        @click.stop="$emit('delete')"
         class="p-1.5 rounded-lg bg-red-500/10 text-red-500 opacity-0 group-hover/todo:opacity-100 transition-all hover:bg-red-500 hover:text-white"
       >
         <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">

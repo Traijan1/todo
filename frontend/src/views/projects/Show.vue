@@ -4,6 +4,7 @@ import { storeToRefs } from "pinia";
 import { useBoardStore } from "../../stores/boards";
 import { useProjectStore } from "../../stores/projects";
 import { useTodoStore } from "../../stores/todos";
+import { useTagStore } from "../../stores/tags";
 import SideDrawer from "../../components/SideDrawer.vue";
 import TaskDrawer from "./drawers/TaskDrawer.vue";
 import BoardDrawer from "./drawers/BoardDrawer.vue";
@@ -14,21 +15,20 @@ const props = defineProps<{
   pid: string;
 }>();
 
-// --- Stores ---
 const projectStore = useProjectStore();
 const boardStore = useBoardStore();
 const todoStore = useTodoStore();
+const tagStore = useTagStore();
 const { boards } = storeToRefs(boardStore);
 
-// --- State ---
 const activeDrawer = shallowRef<any>(null);
 const drawerData = ref<any>({});
 const selectedTodo = ref<Todo | null>(null);
 const selectedBoard = ref<Board | null>(null);
-
 const drawerRef = ref<any>(null);
 
-// --- Computed ---
+const activeTagFilters = ref<string[]>([]);
+
 const project = computed(() => projectStore.projects.find((p) => p.pid === props.pid));
 const isDrawerOpen = computed(() => !!activeDrawer.value);
 
@@ -50,7 +50,6 @@ const drawerMeta = computed(() => {
   return { title: "", subtitle: "", pid: "" };
 });
 
-// --- Actions ---
 const closeDrawer = () => {
   activeDrawer.value = null;
   selectedTodo.value = null;
@@ -80,12 +79,20 @@ const openEditBoard = (board: Board) => {
   activeDrawer.value = BoardDrawer;
 };
 
-const handleTaskSave = async (form: { title: string; description: string }) => {
+const handleTaskSave = async (form: { title: string; description: string; tags?: string[] }) => {
   try {
     if (selectedTodo.value) {
-      await todoStore.updateTodo(selectedTodo.value.pid, { title: form.title, details: form.description });
+      await todoStore.updateTodo(selectedTodo.value.pid, {
+        title: form.title,
+        details: form.description,
+        tags: form.tags,
+      });
     } else {
-      await todoStore.createTodo(drawerData.value.boardPid, { title: form.title, details: form.description });
+      await todoStore.createTodo(drawerData.value.boardPid, {
+        title: form.title,
+        details: form.description,
+        tags: form.tags,
+      });
     }
     await boardStore.fetchBoards(props.pid);
     closeDrawer();
@@ -114,7 +121,6 @@ const deleteTask = async (todo: Todo) => {
 };
 
 const handleMove = async (event: any, boardPid: string) => {
-  console.log("Move event:", event, "Target board:", boardPid);
   if (event.added) {
     await todoStore.updateTodo(event.added.element.pid, { board_pid: boardPid });
     await boardStore.reorderTodos(boardPid);
@@ -123,9 +129,30 @@ const handleMove = async (event: any, boardPid: string) => {
   }
 };
 
+const toggleTagFilter = (pid: string) => {
+  const idx = activeTagFilters.value.indexOf(pid);
+  if (idx === -1) {
+    activeTagFilters.value.push(pid);
+  } else {
+    activeTagFilters.value.splice(idx, 1);
+  }
+};
+
+const tagFilterStyle = (color?: string) => {
+  const c = color || "#E0BBE4";
+  return {
+    backgroundColor: `${c}22`,
+    color: c,
+    borderColor: `${c}44`,
+  };
+};
+
 onMounted(async () => {
   if (!project.value) await projectStore.fetchProjects();
-  await boardStore.fetchBoards(props.pid);
+  await Promise.all([
+    boardStore.fetchBoards(props.pid),
+    tagStore.fetchTags(),
+  ]);
 });
 </script>
 
@@ -134,22 +161,46 @@ onMounted(async () => {
     <!-- Header -->
     <header class="mb-4 shrink-0">
       <h2 class="text-xl font-bold text-brand-primary tracking-tight truncate">{{ project?.title || "Loading..." }}</h2>
-      <div class="flex items-center gap-2 mt-1"></div>
+
+      <!-- Tag filter bar -->
+      <div v-if="tagStore.tags.length" class="flex items-center gap-2 mt-2 flex-wrap">
+        <span class="text-[9px] font-black uppercase tracking-widest text-brand-primary/30 shrink-0">Filter</span>
+        <button
+          v-for="tag in tagStore.tags"
+          :key="tag.pid"
+          type="button"
+          class="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border transition-all"
+          :class="activeTagFilters.includes(tag.pid) ? 'ring-2 ring-white/20' : 'opacity-40 hover:opacity-80'"
+          :style="tagFilterStyle(tag.color)"
+          @click.stop="toggleTagFilter(tag.pid)"
+        >
+          {{ tag.title }}
+        </button>
+        <button
+          v-if="activeTagFilters.length"
+          type="button"
+          class="text-[9px] font-bold uppercase tracking-widest text-brand-text-muted hover:text-brand-text transition-colors px-1"
+          @click.stop="activeTagFilters = []"
+        >
+          Clear
+        </button>
+      </div>
     </header>
 
     <!-- Boards Container -->
-    <div 
+    <div
       class="flex-1 lg:grid transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] min-h-0"
       :style="{ gridTemplateColumns: isDrawerOpen ? '1fr 600px' : '1fr 0px' }"
     >
       <!-- Main Content (Boards) -->
       <div class="overflow-y-auto overflow-x-hidden custom-scrollbar-y pr-2 min-w-0">
         <div class="flex flex-col gap-4 pb-20">
-          <BoardColumn 
-            v-for="board in boards" 
+          <BoardColumn
+            v-for="board in boards"
             :key="board.pid"
             v-model:todos="board.todos"
             :board="board"
+            :filter-tags="activeTagFilters"
             @edit-board="openEditBoard(board)"
             @create-task="openCreateTask(board.pid)"
             @edit-task="openEditTask"
@@ -161,9 +212,16 @@ onMounted(async () => {
 
       <!-- Desktop Spacer for Drawer -->
       <div class="hidden lg:block h-full pointer-events-none"></div>
-    </div>    <!-- SideDrawer -->
+    </div>
+
+    <!-- SideDrawer -->
     <SideDrawer :is-open="isDrawerOpen" v-bind="drawerMeta" @close="closeDrawer">
-      <component :is="activeDrawer" ref="drawerRef" v-bind="drawerData" @save="activeDrawer === TaskDrawer ? handleTaskSave($event) : handleBoardSave($event)" />
+      <component
+        :is="activeDrawer"
+        ref="drawerRef"
+        v-bind="drawerData"
+        @save="activeDrawer === TaskDrawer ? handleTaskSave($event) : handleBoardSave($event)"
+      />
 
       <template #footer>
         <div class="flex gap-3">
