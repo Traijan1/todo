@@ -9,6 +9,11 @@ mod m20260502_140120_todos;
 mod m20260503_124519_add_position_to_todos;
 mod m20260503_212143_add_position_to_boards;
 mod m20260506_140547_tags;
+mod m20260615_000001_tags_project_scope;
+mod m20260615_000002_add_locked_to_todos;
+mod m20260615_000003_add_parent_id_to_todos;
+mod m20260617_000001_comments;
+mod m20260617_000002_project_settings;
 pub struct Migrator;
 
 #[async_trait::async_trait]
@@ -22,6 +27,11 @@ impl MigratorTrait for Migrator {
             Box::new(m20260503_124519_add_position_to_todos::Migration),
             Box::new(m20260503_212143_add_position_to_boards::Migration),
             Box::new(m20260506_140547_tags::Migration),
+            Box::new(m20260615_000001_tags_project_scope::Migration),
+            Box::new(m20260615_000002_add_locked_to_todos::Migration),
+            Box::new(m20260615_000003_add_parent_id_to_todos::Migration),
+            Box::new(m20260617_000001_comments::Migration),
+            Box::new(m20260617_000002_project_settings::Migration),
             // inject-above (do not remove this comment)
         ]
     }

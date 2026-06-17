@@ -1,7 +1,6 @@
 use crate::models::_entities::tags::Column;
 
 pub use super::_entities::tags::{ActiveModel, Entity, Model};
-use crate::models::users;
 use loco_rs::model::{ModelError, ModelResult};
 use sea_orm::{entity::prelude::*, ActiveValue::Set};
 use serde::{Deserialize, Serialize};
@@ -11,6 +10,7 @@ pub type Tags = Entity;
 pub struct TagParams {
     pub title: String,
     pub color: Option<String>,
+    pub project_id: i32,
 }
 
 #[async_trait::async_trait]
@@ -48,30 +48,30 @@ impl Model {
     pub async fn find_or_create_by_title<C>(
         db: &C,
         title: &str,
-        user: &users::Model,
+        project_id: i32,
     ) -> ModelResult<Self>
     where
         C: ConnectionTrait,
     {
         if let Some(tag) = Entity::find()
             .filter(Column::Title.eq(title))
-            .filter(Column::UserId.eq(user.id))
+            .filter(Column::ProjectId.eq(project_id))
             .one(db)
             .await?
         {
             return Ok(tag);
         }
-        Self::create(db, &TagParams { title: title.to_string(), color: None }, user).await
+        Self::create(db, &TagParams { title: title.to_string(), color: None, project_id }).await
     }
 
-    pub async fn create<C>(db: &C, params: &TagParams, user: &users::Model) -> ModelResult<Self>
+    pub async fn create<C>(db: &C, params: &TagParams) -> ModelResult<Self>
     where
         C: ConnectionTrait,
     {
         ActiveModel {
             title: Set(params.title.clone()),
             color: Set(params.color.clone()),
-            user_id: Set(user.id),
+            project_id: Set(params.project_id),
             ..Default::default()
         }
         .insert(db)

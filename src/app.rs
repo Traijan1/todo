@@ -48,11 +48,13 @@ impl Hooks for App {
     fn routes(_ctx: &AppContext) -> AppRoutes {
         AppRoutes::with_default_routes() // controller routes below
             .add_route(controllers::tags::routes())
+            .add_route(controllers::comments::routes())
             .add_route(controllers::mcp::routes())
             .add_route(controllers::todo::routes())
             .add_route(controllers::board::routes())
             .add_route(controllers::project::routes())
             .add_route(controllers::auth::routes())
+            .add_route(controllers::ws::routes())
     }
 
     async fn connect_workers(ctx: &AppContext, queue: &Queue) -> Result<()> {

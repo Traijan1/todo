@@ -7,7 +7,7 @@ use crate::models::{
 
 pub use super::_entities::boards::{ActiveModel, Entity, Model};
 use loco_rs::model::{ModelError, ModelResult};
-use sea_orm::{entity::prelude::*, ActiveValue::Set};
+use sea_orm::{entity::prelude::*, ActiveValue::Set, QueryOrder};
 use serde::{Deserialize, Serialize};
 pub type Boards = Entity;
 
@@ -74,6 +74,7 @@ impl Model {
 
         let items = boards::Entity::find()
             .filter(boards::Column::ProjectId.eq(project.id))
+            .order_by_asc(boards::Column::Position)
             .all(db)
             .await?;
 

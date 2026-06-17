@@ -25,6 +25,7 @@ export default defineConfig({
         target: "http://localhost:5150",
         changeOrigin: true,
         secure: false,
+        ws: true,
         pathRewrite: { "^/api": "/api" },
       },
     },

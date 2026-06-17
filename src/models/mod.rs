@@ -1,5 +1,6 @@
 pub mod _entities;
 pub mod boards;
+pub mod comments;
 pub mod projects;
 pub mod tags;
 pub mod todos;

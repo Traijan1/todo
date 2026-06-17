@@ -17,6 +17,8 @@ pub struct Model {
     pub details: Option<String>,
     pub board_id: i32,
     pub position: i32,
+    pub locked: bool,
+    pub parent_id: Option<i32>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -31,6 +33,14 @@ pub enum Relation {
     Boards,
     #[sea_orm(has_many = "super::todos_tags::Entity")]
     TodosTags,
+    #[sea_orm(has_many = "super::comments::Entity")]
+    Comments,
+}
+
+impl Related<super::comments::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Comments.def()
+    }
 }
 
 impl Related<super::boards::Entity> for Entity {

@@ -5,9 +5,11 @@ use loco_rs::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::models::{
-    _entities::tags::{ActiveModel, Entity, Model},
+    _entities::{
+        projects,
+        tags::{ActiveModel, Column, Entity, Model},
+    },
     tags::TagParams,
-    users,
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -24,47 +26,62 @@ impl Params {
 }
 
 async fn load_item(ctx: &AppContext, pid: &str) -> Result<Model> {
-    let item = Model::find_by_pid(&ctx.db, pid).await?;
-    Ok(item)
+    Ok(Model::find_by_pid(&ctx.db, pid).await?)
 }
 
 #[debug_handler]
-pub async fn list(auth: auth::JWT, State(ctx): State<AppContext>) -> Result<Response> {
-    let user = users::Model::find_by_pid(&ctx.db, &auth.claims.pid).await?;
+pub async fn list(
+    _auth: auth::JWT,
+    State(ctx): State<AppContext>,
+    Path(project_pid): Path<Uuid>,
+) -> Result<Response> {
+    let project = projects::Entity::find()
+        .filter(projects::Column::Pid.eq(project_pid))
+        .one(&ctx.db)
+        .await?
+        .ok_or_else(|| Error::NotFound)?;
+
     let tags = Entity::find()
-        .filter(crate::models::_entities::tags::Column::UserId.eq(user.id))
+        .filter(Column::ProjectId.eq(project.id))
         .all(&ctx.db)
         .await?;
+
     format::json(tags)
 }
 
 #[debug_handler]
 pub async fn add(
-    auth: auth::JWT,
+    _auth: auth::JWT,
     State(ctx): State<AppContext>,
+    Path(project_pid): Path<Uuid>,
     Json(params): Json<Params>,
 ) -> Result<Response> {
-    let user = users::Model::find_by_pid(&ctx.db, &auth.claims.pid).await?;
+    let project = projects::Entity::find()
+        .filter(projects::Column::Pid.eq(project_pid))
+        .one(&ctx.db)
+        .await?
+        .ok_or_else(|| Error::NotFound)?;
+
     let item = Model::create(
         &ctx.db,
         &TagParams {
             title: params.title,
             color: params.color,
+            project_id: project.id,
         },
-        &user,
     )
     .await?;
+
     format::json(item)
 }
 
 #[debug_handler]
 pub async fn update(
-    auth: auth::JWT,
+    _auth: auth::JWT,
     Path(pid): Path<String>,
     State(ctx): State<AppContext>,
     Json(params): Json<Params>,
 ) -> Result<Response> {
-    let _user = users::Model::find_by_pid(&ctx.db, &auth.claims.pid).await?;
     let item = load_item(&ctx, &pid).await?;
     let mut item = item.into_active_model();
     params.update(&mut item);
@@ -74,32 +91,30 @@ pub async fn update(
 
 #[debug_handler]
 pub async fn remove(
-    auth: auth::JWT,
+    _auth: auth::JWT,
     Path(pid): Path<String>,
     State(ctx): State<AppContext>,
 ) -> Result<Response> {
-    let _user = users::Model::find_by_pid(&ctx.db, &auth.claims.pid).await?;
     load_item(&ctx, &pid).await?.delete(&ctx.db).await?;
     format::empty()
 }
 
 #[debug_handler]
 pub async fn get_one(
-    auth: auth::JWT,
+    _auth: auth::JWT,
     Path(pid): Path<String>,
     State(ctx): State<AppContext>,
 ) -> Result<Response> {
-    let _user = users::Model::find_by_pid(&ctx.db, &auth.claims.pid).await?;
     format::json(load_item(&ctx, &pid).await?)
 }
 
 pub fn routes() -> Routes {
     Routes::new()
-        .prefix("api/tags")
-        .add("/", get(list))
-        .add("/", post(add))
-        .add("/{pid}", get(get_one))
-        .add("/{pid}", delete(remove))
-        .add("/{pid}", put(update))
-        .add("/{pid}", patch(update))
+        .prefix("api")
+        .add("/projects/{project_pid}/tags", get(list))
+        .add("/projects/{project_pid}/tags", post(add))
+        .add("/tags/{pid}", get(get_one))
+        .add("/tags/{pid}", delete(remove))
+        .add("/tags/{pid}", put(update))
+        .add("/tags/{pid}", patch(update))
 }

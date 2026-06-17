@@ -14,6 +14,8 @@ pub struct TodoParams {
     pub title: String,
     pub details: Option<String>,
     pub tags: Option<Vec<String>>,
+    pub locked: Option<bool>,
+    pub parent_pid: Option<String>,
 }
 
 #[derive(Debug, Validate, Deserialize)]
@@ -78,6 +80,63 @@ impl Model {
         Ok(items)
     }
 
+    /// Find todos for a project with optional board, tag, and text filters, including tag data.
+    pub async fn find_by_project_pid_with_tags<C>(
+        db: &C,
+        project_pid: &str,
+        board_pid: Option<&str>,
+        tag_pids: Option<&[String]>,
+        search: Option<&str>,
+    ) -> ModelResult<Vec<(Self, Vec<tags::Model>)>>
+    where
+        C: ConnectionTrait,
+    {
+        let all_boards = boards::Model::find_by_project_pid(db, project_pid).await?;
+
+        let board_ids: Vec<i32> = if let Some(bpid) = board_pid {
+            let uuid = Uuid::parse_str(bpid).map_err(|_| ModelError::EntityNotFound)?;
+            all_boards
+                .iter()
+                .filter(|b| b.pid == uuid)
+                .map(|b| b.id)
+                .collect()
+        } else {
+            all_boards.iter().map(|b| b.id).collect()
+        };
+
+        if board_ids.is_empty() {
+            return Ok(vec![]);
+        }
+
+        let mut select = todos::Entity::find()
+            .filter(Column::BoardId.is_in(board_ids))
+            .filter(Column::ParentId.is_null());
+
+        if let Some(s) = search {
+            if !s.is_empty() {
+                select = select.filter(Column::Title.contains(s));
+            }
+        }
+
+        let results = select.find_with_related(tags::Entity).all(db).await?;
+
+        let filtered = match tag_pids {
+            Some(pids) if !pids.is_empty() => {
+                let uuids: Vec<Uuid> = pids
+                    .iter()
+                    .filter_map(|p| Uuid::parse_str(p).ok())
+                    .collect();
+                results
+                    .into_iter()
+                    .filter(|(_, todo_tags)| todo_tags.iter().any(|t| uuids.contains(&t.pid)))
+                    .collect()
+            }
+            _ => results,
+        };
+
+        Ok(filtered)
+    }
+
     pub async fn create<C>(
         db: &C,
         params: &TodoParams,
@@ -88,11 +147,25 @@ impl Model {
         C: ConnectionTrait,
     {
         let count = board.todo_count(db).await?;
+
+        let parent_id = if let Some(ppid) = &params.parent_pid {
+            let uuid = Uuid::parse_str(ppid).map_err(|_| ModelError::EntityNotFound)?;
+            let parent = Entity::find()
+                .filter(Column::Pid.eq(uuid))
+                .one(db)
+                .await?
+                .ok_or(ModelError::EntityNotFound)?;
+            Some(parent.id)
+        } else {
+            None
+        };
+
         let item = ActiveModel {
             title: Set(params.title.clone()),
             details: Set(params.details.clone()),
             board_id: Set(board.id),
             position: Set(count as i32),
+            parent_id: Set(parent_id),
             ..Default::default()
         }
         .insert(db)

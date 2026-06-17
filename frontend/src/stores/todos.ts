@@ -21,7 +21,7 @@ export const useTodoStore = defineStore("todos", () => {
     }
   }
 
-  async function createTodo(boardPid: string, payload: { title: string; details?: string; tags?: string[] }) {
+  async function createTodo(boardPid: string, payload: { title: string; details?: string; tags?: string[]; parent_pid?: string }) {
     loading.value = true;
     error.value = null;
     try {
@@ -37,7 +37,7 @@ export const useTodoStore = defineStore("todos", () => {
     }
   }
 
-  async function updateTodo(pid: string, payload: { title?: string; details?: string | null; board_pid?: string; tags?: string[] }) {
+  async function updateTodo(pid: string, payload: { title?: string; details?: string | null; board_pid?: string; tags?: string[]; locked?: boolean; parent_pid?: string }) {
     loading.value = true;
     error.value = null;
     try {

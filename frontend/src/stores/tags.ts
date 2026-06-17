@@ -7,18 +7,18 @@ export const useTagStore = defineStore("tags", () => {
   const tags = ref<Tag[]>([]);
   const loading = ref(false);
 
-  async function fetchTags() {
+  async function fetchTags(projectPid: string) {
     loading.value = true;
     try {
-      const res = await api.get("/tags");
+      const res = await api.get(`/projects/${projectPid}/tags`);
       tags.value = res.data;
     } finally {
       loading.value = false;
     }
   }
 
-  async function createTag(title: string, color?: string): Promise<Tag> {
-    const res = await api.post("/tags", { title, color });
+  async function createTag(projectPid: string, title: string, color?: string): Promise<Tag> {
+    const res = await api.post(`/projects/${projectPid}/tags`, { title, color });
     tags.value.push(res.data);
     return res.data;
   }

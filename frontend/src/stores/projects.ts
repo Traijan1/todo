@@ -51,6 +51,19 @@ export const useProjectStore = defineStore("projects", () => {
     }
   }
 
+  async function updateProject(pid: string, payload: { title?: string; description?: string; mcp_expose_comments?: boolean }) {
+    const response = await api.put(`/projects/${pid}`, payload);
+    const idx = projects.value.findIndex((p) => p.pid === pid);
+    if (idx !== -1) projects.value[idx] = response.data;
+    if (currentProject.value?.pid === pid) currentProject.value = response.data;
+    return response.data;
+  }
+
+  async function deleteProject(pid: string) {
+    await api.delete(`/projects/${pid}`);
+    projects.value = projects.value.filter((p) => p.pid !== pid);
+  }
+
   return {
     projects,
     currentProject,
@@ -59,5 +72,7 @@ export const useProjectStore = defineStore("projects", () => {
     fetchProjects,
     createProject,
     fetchProjectByPid,
+    updateProject,
+    deleteProject,
   };
 });

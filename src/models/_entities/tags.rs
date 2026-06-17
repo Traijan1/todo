@@ -14,7 +14,7 @@ pub struct Model {
     pub pid: Uuid,
     pub title: String,
     pub color: Option<String>,
-    pub user_id: i32,
+    pub project_id: i32,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -22,13 +22,13 @@ pub enum Relation {
     #[sea_orm(has_many = "super::todos_tags::Entity")]
     TodosTags,
     #[sea_orm(
-        belongs_to = "super::users::Entity",
-        from = "Column::UserId",
-        to = "super::users::Column::Id",
+        belongs_to = "super::projects::Entity",
+        from = "Column::ProjectId",
+        to = "super::projects::Column::Id",
         on_update = "Cascade",
         on_delete = "Cascade"
     )]
-    Users,
+    Projects,
 }
 
 impl Related<super::todos_tags::Entity> for Entity {
@@ -37,9 +37,9 @@ impl Related<super::todos_tags::Entity> for Entity {
     }
 }
 
-impl Related<super::users::Entity> for Entity {
+impl Related<super::projects::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::Users.def()
+        Relation::Projects.def()
     }
 }
 

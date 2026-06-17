@@ -1,12 +1,14 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import axios from "axios";
+import api from "../api/client";
 
 interface User {
   pid: string;
   name: string;
   email?: string;
   is_verified?: boolean;
+  mcp_token?: string;
 }
 
 export const useAuthStore = defineStore("auth", () => {
@@ -50,6 +52,17 @@ export const useAuthStore = defineStore("auth", () => {
     }
   }
 
+  async function fetchCurrentUser() {
+    if (!token.value) return;
+    try {
+      const response = await api.get("/auth/current");
+      if (user.value) {
+        user.value = { ...user.value, ...response.data };
+        localStorage.setItem("user", JSON.stringify(user.value));
+      }
+    } catch {}
+  }
+
   async function login(payload: any) {
     loading.value = true;
     error.value = null;
@@ -79,5 +92,6 @@ export const useAuthStore = defineStore("auth", () => {
     logout,
     register,
     login,
+    fetchCurrentUser,
   };
 });

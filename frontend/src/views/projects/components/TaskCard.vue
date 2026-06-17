@@ -11,8 +11,30 @@ defineEmits<{
   (e: "delete"): void;
 }>();
 
+const ensureReadableColor = (hex: string): string => {
+  let cleanHex = hex.replace("#", "");
+  if (cleanHex.length === 3) {
+    cleanHex = cleanHex.split("").map((char) => char + char).join("");
+  }
+  const num = parseInt(cleanHex, 16);
+  const R = num >> 16;
+  const G = (num >> 8) & 0x00ff;
+  const B = num & 0x0000ff;
+  const luminance = 0.299 * R + 0.587 * G + 0.114 * B;
+  if (luminance < 140) {
+    const percent = Math.round((140 - luminance) * 0.4) + 15;
+    const amt = Math.round(2.55 * percent);
+    const newR = Math.min(255, R + amt);
+    const newG = Math.min(255, G + amt);
+    const newB = Math.min(255, B + amt);
+    return `#${(0x1000000 + newR * 0x10000 + newG * 0x100 + newB).toString(16).slice(1)}`;
+  }
+  return hex;
+};
+
 const tagStyle = (color?: string) => {
-  const c = color || "#E0BBE4";
+  const rawColor = color || "#9f75ff";
+  const c = ensureReadableColor(rawColor);
   return {
     backgroundColor: `${c}22`,
     color: c,
@@ -24,10 +46,18 @@ const tagStyle = (color?: string) => {
 <template>
   <div
     @click="$emit('click', $event)"
-    class="relative bg-brand-background/60 p-2.5 px-4 rounded-xl border border-white/5 hover:border-brand-primary/20 transition-all cursor-pointer shadow-sm group/todo flex items-center gap-4"
+    class="relative bg-brand-background/60 p-2.5 px-4 rounded-xl border transition-all cursor-pointer shadow-sm group/todo flex items-center gap-4"
+    :class="todo.locked
+      ? 'border-amber-500/20 hover:border-amber-500/40'
+      : 'border-white/5 hover:border-brand-primary/20'"
   >
     <div class="flex-1 min-w-0">
-      <p class="text-sm font-bold text-brand-text group-hover/todo:text-brand-primary transition-colors leading-tight truncate">{{ todo.title }}</p>
+      <div class="flex items-center gap-1.5">
+        <p class="text-sm font-bold text-brand-text group-hover/todo:text-brand-primary transition-colors leading-tight truncate">{{ todo.title }}</p>
+        <svg v-if="todo.locked" xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 shrink-0 text-amber-400/70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+        </svg>
+      </div>
       <p v-if="todo.details" class="text-[10px] text-brand-text-muted truncate font-medium opacity-60 mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis">
         {{ todo.details.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim() }}
       </p>
@@ -39,6 +69,14 @@ const tagStyle = (color?: string) => {
           :style="tagStyle(tag.color)"
         >
           {{ tag.title }}
+        </span>
+      </div>
+      <div v-if="todo.subtasks?.length" class="flex items-center gap-1 mt-1.5">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-2.5 w-2.5 text-brand-primary/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+        </svg>
+        <span class="text-[9px] font-bold text-brand-primary/40 uppercase tracking-wider">
+          {{ todo.subtasks.length }} subtask{{ todo.subtasks.length !== 1 ? 's' : '' }}
         </span>
       </div>
     </div>

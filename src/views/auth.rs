@@ -8,6 +8,7 @@ pub struct LoginResponse {
     pub pid: String,
     pub name: String,
     pub is_verified: bool,
+    pub mcp_token: String,
 }
 
 impl LoginResponse {
@@ -18,6 +19,7 @@ impl LoginResponse {
             pid: user.pid.to_string(),
             name: user.name.clone(),
             is_verified: user.email_verified_at.is_some(),
+            mcp_token: user.api_key.clone(),
         }
     }
 }
@@ -27,6 +29,7 @@ pub struct CurrentResponse {
     pub pid: String,
     pub name: String,
     pub email: String,
+    pub mcp_token: String,
 }
 
 impl CurrentResponse {
@@ -36,6 +39,7 @@ impl CurrentResponse {
             pid: user.pid.to_string(),
             name: user.name.clone(),
             email: user.email.clone(),
+            mcp_token: user.api_key.clone(),
         }
     }
 }

@@ -6,13 +6,14 @@ use sea_orm::QueryOrder;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    controllers::ws,
     models::{
         _entities::todos::{self, Entity, Model},
         boards,
         todos::TodoParams,
         users,
     },
-    views::todo::TodoResponse,
+    views::todo::{SubtaskItem, TodoResponse},
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
@@ -21,11 +22,31 @@ pub struct Params {
     pub details: Option<Option<String>>,
     pub board_pid: Option<String>,
     pub tags: Option<Vec<String>>,
+    pub locked: Option<bool>,
+    pub parent_pid: Option<String>,
 }
 
 async fn load_item_by_pid(ctx: &AppContext, pid: &str) -> Result<Model> {
     let item = todos::Model::find_by_pid(&ctx.db, pid).await?;
     Ok(item)
+}
+
+async fn load_subtasks(ctx: &AppContext, parent_id: i32) -> Result<Vec<SubtaskItem>> {
+    let raw = Entity::find()
+        .filter(todos::Column::ParentId.eq(parent_id))
+        .order_by_asc(todos::Column::Position)
+        .find_with_related(crate::models::_entities::tags::Entity)
+        .all(&ctx.db)
+        .await?;
+    Ok(raw
+        .into_iter()
+        .map(|(s, stags)| SubtaskItem {
+            pid: s.pid.to_string(),
+            title: s.title,
+            locked: s.locked,
+            tags: stags,
+        })
+        .collect())
 }
 
 #[debug_handler]
@@ -37,6 +58,7 @@ pub async fn list_by_board(
 
     let todos = Entity::find()
         .filter(todos::Column::BoardId.eq(board.id))
+        .filter(todos::Column::ParentId.is_null())
         .order_by_asc(todos::Column::Position)
         .find_with_related(crate::models::_entities::tags::Entity)
         .all(&ctx.db)
@@ -44,7 +66,7 @@ pub async fn list_by_board(
 
     let response: Vec<TodoResponse> = todos
         .into_iter()
-        .map(|(todo, tags)| TodoResponse::from(todo, tags))
+        .map(|(todo, tags)| TodoResponse::from(todo, tags, None, vec![]))
         .collect();
 
     format::json(response)
@@ -65,6 +87,8 @@ pub async fn add(
             title: params.title.unwrap_or_default(),
             details: params.details.flatten(),
             tags: params.tags,
+            locked: None,
+            parent_pid: params.parent_pid,
         },
         &board,
         &user,
@@ -78,7 +102,8 @@ pub async fn add(
         .await?;
     let (item, tags) = res.into_iter().next().ok_or_else(|| Error::NotFound)?;
 
-    format::json(TodoResponse::from(item, tags))
+    ws::broadcast_for_board_id(&ctx.db, board.id).await;
+    format::json(TodoResponse::from(item, tags, None, vec![]))
 }
 
 #[debug_handler]
@@ -105,6 +130,19 @@ pub async fn update(
         item_active.board_id = Set(board.id);
     }
 
+    if let Some(locked) = params.locked {
+        item_active.locked = Set(locked);
+    }
+
+    if let Some(ppid) = &params.parent_pid {
+        if ppid.is_empty() {
+            item_active.parent_id = Set(None);
+        } else {
+            let parent = todos::Model::find_by_pid(&ctx.db, ppid).await?;
+            item_active.parent_id = Set(Some(parent.id));
+        }
+    }
+
     let _item_active = item_active.update(&ctx.db).await?;
 
     if let Some(tags) = params.tags {
@@ -117,14 +155,17 @@ pub async fn update(
         .all(&ctx.db)
         .await?;
     let (item, tags) = res.into_iter().next().ok_or_else(|| Error::NotFound)?;
+    ws::broadcast_for_board_id(&ctx.db, item.board_id).await;
 
-    format::json(TodoResponse::from(item, tags))
+    format::json(TodoResponse::from(item, tags, None, vec![]))
 }
 
 #[debug_handler]
 pub async fn remove(Path(pid): Path<String>, State(ctx): State<AppContext>) -> Result<Response> {
-    load_item_by_pid(&ctx, &pid).await?.delete(&ctx.db).await?;
-
+    let item = load_item_by_pid(&ctx, &pid).await?;
+    let board_id = item.board_id;
+    item.delete(&ctx.db).await?;
+    ws::broadcast_for_board_id(&ctx.db, board_id).await;
     format::empty()
 }
 
@@ -137,7 +178,18 @@ pub async fn get_one(Path(pid): Path<String>, State(ctx): State<AppContext>) -> 
         .await?;
     let (item, tags) = res.into_iter().next().ok_or_else(|| Error::NotFound)?;
 
-    format::json(TodoResponse::from(item, tags))
+    let parent_pid = if let Some(parent_id) = item.parent_id {
+        Entity::find_by_id(parent_id)
+            .one(&ctx.db)
+            .await?
+            .map(|p| p.pid.to_string())
+    } else {
+        None
+    };
+
+    let subtasks = load_subtasks(&ctx, item.id).await?;
+
+    format::json(TodoResponse::from(item, tags, parent_pid, subtasks))
 }
 
 pub fn routes() -> Routes {
