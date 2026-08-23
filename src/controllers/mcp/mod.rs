@@ -1,6 +1,3 @@
-mod actions;
-mod schema;
-
 use axum::{
     extract::{Query, State},
     http::HeaderMap,
@@ -223,7 +220,7 @@ fn handle_tools_list(id: Option<Value>) -> Value {
     json!({
         "jsonrpc": "2.0",
         "id": id,
-        "result": { "tools": schema::get_tools_list() }
+        "result": { "tools": crate::services::tools::definitions() }
     })
 }
 
@@ -245,41 +242,10 @@ async fn handle_tools_call(
         .and_then(|p| p.get("arguments"))
         .unwrap_or(&default_args);
 
-    let result = match tool_name {
-        // Projects
-        "get_projects" => actions::get_projects(ctx, user).await?,
-        "add_project" => actions::add_project(ctx, args, user).await?,
-        "update_project" => actions::update_project(ctx, args).await?,
-        "delete_project" => actions::delete_project(ctx, args).await?,
-        // Boards
-        "get_boards" => actions::get_boards(ctx, args).await?,
-        "add_board" => actions::add_board(ctx, args).await?,
-        "update_board" => actions::update_board(ctx, args).await?,
-        "delete_board" => actions::delete_board(ctx, args).await?,
-        "reorder_boards" => actions::reorder_boards(ctx, args).await?,
-        // Todos
-        "get_todos" => actions::get_todos(ctx, args).await?,
-        "get_todo" => actions::get_todo(ctx, args).await?,
-        "add_todo" => actions::add_todo(ctx, args, user).await?,
-        "update_todo" => actions::update_todo(ctx, args, user).await?,
-        "delete_todo" => actions::delete_todo(ctx, args).await?,
-        "reorder_todos" => actions::reorder_todos(ctx, args).await?,
-        // Tags
-        "get_tags" => actions::get_tags(ctx, args).await?,
-        "create_tag" => actions::create_tag(ctx, args).await?,
-        "update_tag" => actions::update_tag(ctx, args).await?,
-        "delete_tag" => actions::delete_tag(ctx, args).await?,
-        "add_tag_to_todo" => actions::add_tag_to_todo(ctx, args).await?,
-        "remove_tag_from_todo" => actions::remove_tag_from_todo(ctx, args).await?,
-        // Comments
-        "get_comments" => actions::get_comments(ctx, args).await?,
-        "add_comment" => actions::add_comment(ctx, args, user).await?,
-        // Time tracking
-        "start_timer" => actions::start_timer(ctx, args, user).await?,
-        "stop_timer" => actions::stop_timer(ctx, args, user).await?,
-        "get_time" => actions::get_time(ctx, args).await?,
-        _ => return Ok(error_response(id, -32601, "Tool not found")),
-    };
+    if !crate::services::tools::is_known_tool(tool_name) {
+        return Ok(error_response(id, -32601, "Tool not found"));
+    }
+    let result = crate::services::tools::execute(ctx, user, tool_name, args).await?;
 
     Ok(json!({ "jsonrpc": "2.0", "id": id, "result": result }))
 }
