@@ -9,6 +9,8 @@ services:
       - LOCO_ENV=production
       - DATABASE_URL=sqlite://data/todo.sqlite?mode=rwc
       - AUTH_JWT_SECRET=${AUTH_JWT_SECRET}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./data:/usr/app/data
     networks:

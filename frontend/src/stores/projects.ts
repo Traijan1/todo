@@ -51,11 +51,23 @@ export const useProjectStore = defineStore("projects", () => {
     }
   }
 
-  async function updateProject(pid: string, payload: { title?: string; description?: string; mcp_expose_comments?: boolean }) {
+  async function updateProject(pid: string, payload: {
+    title?: string;
+    description?: string;
+    mcp_expose_comments?: boolean;
+    ai_provider?: string;
+    ai_model?: string;
+    ai_prompt?: string;
+  }) {
     const response = await api.put(`/projects/${pid}`, payload);
     const idx = projects.value.findIndex((p) => p.pid === pid);
     if (idx !== -1) projects.value[idx] = response.data;
     if (currentProject.value?.pid === pid) currentProject.value = response.data;
+    return response.data;
+  }
+
+  async function testProjectAi(pid: string, payload: { prompt: string; model?: string; system_prompt?: string }) {
+    const response = await api.post(`/projects/${pid}/test-ai`, payload);
     return response.data;
   }
 
@@ -87,6 +99,7 @@ export const useProjectStore = defineStore("projects", () => {
     createProject,
     fetchProjectByPid,
     updateProject,
+    testProjectAi,
     deleteProject,
     fetchMembers,
     addMember,

@@ -50,6 +50,9 @@ pub struct Params {
     pub title: String,
     pub description: Option<String>,
     pub mcp_expose_comments: Option<bool>,
+    pub ai_provider: Option<String>,
+    pub ai_model: Option<String>,
+    pub ai_prompt: Option<String>,
 }
 
 impl Params {
@@ -58,6 +61,27 @@ impl Params {
         item.description = Set(self.description.clone());
         if let Some(v) = self.mcp_expose_comments {
             item.mcp_expose_comments = Set(v);
+        }
+        if let Some(v) = &self.ai_provider {
+            item.ai_provider = Set(if v.trim().is_empty() {
+                None
+            } else {
+                Some(v.clone())
+            });
+        }
+        if let Some(v) = &self.ai_model {
+            item.ai_model = Set(if v.trim().is_empty() {
+                None
+            } else {
+                Some(v.clone())
+            });
+        }
+        if let Some(v) = &self.ai_prompt {
+            item.ai_prompt = Set(if v.trim().is_empty() {
+                None
+            } else {
+                Some(v.clone())
+            });
         }
     }
 }
@@ -85,6 +109,19 @@ async fn require_owner(ctx: &AppContext, user_id: i32, project_id: i32) -> Resul
         ));
     }
     Ok(())
+}
+
+async fn require_member(
+    ctx: &AppContext,
+    user_id: i32,
+    project_id: i32,
+) -> Result<up_entity::Model> {
+    up_entity::Entity::find()
+        .filter(up_entity::Column::UserId.eq(user_id))
+        .filter(up_entity::Column::ProjectId.eq(project_id))
+        .one(&ctx.db)
+        .await?
+        .ok_or(Error::NotFound)
 }
 
 #[debug_handler]
@@ -281,6 +318,92 @@ pub async fn user_stats(auth: auth::JWT, State(ctx): State<AppContext>) -> Resul
     })
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct AiTestPromptParams {
+    pub prompt: String,
+    pub model: Option<String>,
+    pub system_prompt: Option<String>,
+}
+
+#[debug_handler]
+pub async fn test_ai(
+    auth: auth::JWT,
+    Path(pid): Path<String>,
+    State(ctx): State<AppContext>,
+    Json(params): Json<AiTestPromptParams>,
+) -> Result<Response> {
+    if params.prompt.trim().is_empty() {
+        return Err(Error::BadRequest("Prompt cannot be empty".into()));
+    }
+
+    let user = users::Model::find_by_pid(&ctx.db, &auth.claims.pid).await?;
+    let project = load_item_by_pid(&ctx, &pid).await?;
+    require_member(&ctx, user.id, project.id).await?;
+
+    let settings = crate::models::user_settings::Model::get_or_default(&ctx.db, user.id).await?;
+    let clean_url = settings.ollama_url.trim_end_matches('/');
+
+    let model = params
+        .model
+        .filter(|m| !m.trim().is_empty())
+        .or(project.ai_model)
+        .unwrap_or_else(|| "llama3.2".to_string());
+
+    let system = params
+        .system_prompt
+        .filter(|s| !s.trim().is_empty())
+        .or(project.ai_prompt);
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(120))
+        .build()
+        .map_err(|_| Error::InternalServerError)?;
+
+    let mut body = serde_json::json!({
+        "model": model,
+        "prompt": params.prompt,
+        "stream": false,
+    });
+
+    if let Some(sys) = system {
+        if !sys.trim().is_empty() {
+            body["system"] = serde_json::json!(sys);
+        }
+    }
+
+    let start_time = std::time::Instant::now();
+    let url = format!("{clean_url}/api/generate");
+    let res = client.post(&url).json(&body).send().await.map_err(|e| {
+        Error::BadRequest(format!("Failed to connect to Ollama at {clean_url}: {e}"))
+    })?;
+
+    if !res.status().is_success() {
+        let err_text = res.text().await.unwrap_or_default();
+        return Err(Error::BadRequest(format!("Ollama error: {err_text}")));
+    }
+
+    let json: serde_json::Value = res
+        .json()
+        .await
+        .map_err(|e| Error::BadRequest(format!("Invalid JSON from Ollama: {e}")))?;
+
+    let duration_ms = start_time.elapsed().as_millis();
+    let response_text = json
+        .get("response")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+
+    format::json(serde_json::json!({
+        "ok": true,
+        "model": model,
+        "response": response_text,
+        "duration_ms": duration_ms,
+        "eval_count": json.get("eval_count"),
+        "total_duration": json.get("total_duration"),
+    }))
+}
+
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("api/projects/")
@@ -291,4 +414,5 @@ pub fn routes() -> Routes {
         .add("{pid}", delete(remove))
         .add("{pid}", put(update))
         .add("{pid}", patch(update))
+        .add("{pid}/test-ai", post(test_ai))
 }

@@ -6,6 +6,7 @@ import ProjectCreate from "../views/projects/Create.vue";
 import ProjectIndex from "../views/projects/Index.vue";
 import ProjectShow from "../views/projects/Show.vue";
 import ProjectSettings from "../views/projects/Settings.vue";
+import SettingsView from "../views/Settings.vue";
 
 const router = createRouter({
   history: createWebHistory(),
@@ -14,6 +15,11 @@ const router = createRouter({
       path: "/",
       name: "home",
       component: HomeView,
+    },
+    {
+      path: "/settings",
+      name: "settings",
+      component: SettingsView,
     },
     {
       path: "/register",

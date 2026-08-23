@@ -9,5 +9,6 @@ pub mod tags;
 pub mod time_entries;
 pub mod todos;
 pub mod todos_tags;
+pub mod user_settings;
 pub mod users;
 pub mod users_projects;

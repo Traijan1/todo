@@ -17,6 +17,8 @@ mod m20260617_000002_project_settings;
 mod m20260618_000001_project_roles;
 mod m20260618_000002_comments_user_id;
 mod m20260618_000003_time_entries;
+mod m20260823_000001_projects_ai;
+mod m20260823_000002_user_settings;
 pub struct Migrator;
 
 #[async_trait::async_trait]
@@ -38,6 +40,8 @@ impl MigratorTrait for Migrator {
             Box::new(m20260618_000001_project_roles::Migration),
             Box::new(m20260618_000002_comments_user_id::Migration),
             Box::new(m20260618_000003_time_entries::Migration),
+            Box::new(m20260823_000001_projects_ai::Migration),
+            Box::new(m20260823_000002_user_settings::Migration),
             // inject-above (do not remove this comment)
         ]
     }

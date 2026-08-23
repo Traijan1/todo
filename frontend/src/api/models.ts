@@ -10,8 +10,38 @@ export interface Project {
   title: string;
   description?: string;
   mcp_expose_comments: boolean;
+  ai_provider?: string;
+  ai_model?: string;
+  ai_prompt?: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface UserSettings {
+  id?: number;
+  user_id?: number;
+  ollama_url: string;
+  default_model?: string;
+}
+
+export interface OllamaModel {
+  name: string;
+  model: string;
+  size?: number;
+  details?: {
+    family?: string;
+    parameter_size?: string;
+    quantization_level?: string;
+  };
+}
+
+export interface AiTestResult {
+  ok: boolean;
+  model: string;
+  response: string;
+  duration_ms: number;
+  eval_count?: number;
+  total_duration?: number;
 }
 
 export interface Tag {

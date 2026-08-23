@@ -5,6 +5,7 @@ pub mod comments;
 pub mod mcp;
 pub mod members;
 pub mod project;
+pub mod settings;
 pub mod tags;
 pub mod timer;
 pub mod todo;

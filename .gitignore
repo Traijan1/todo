@@ -18,6 +18,7 @@ target/
 
 *.sqlite
 *.sqlite-*
+*.sqlite.backup-*
 
 rustc-ice*
 

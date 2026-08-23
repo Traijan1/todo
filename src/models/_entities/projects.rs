@@ -15,6 +15,10 @@ pub struct Model {
     #[sea_orm(column_type = "Text", nullable)]
     pub description: Option<String>,
     pub mcp_expose_comments: bool,
+    pub ai_provider: Option<String>,
+    pub ai_model: Option<String>,
+    #[sea_orm(column_type = "Text", nullable)]
+    pub ai_prompt: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
