@@ -35,8 +35,22 @@ const status = ref("Denke nach …");
 const chatPanel = ref<HTMLElement | null>(null);
 const scrollArea = ref<HTMLElement | null>(null);
 const inputArea = ref<HTMLTextAreaElement | null>(null);
+const dragging = ref(false);
+const panelOffset = ref({ x: 0, y: 0 });
 let nextMessageId = 1;
 let activeRequest: AbortController | null = null;
+let dragState:
+  | {
+      pointerX: number;
+      pointerY: number;
+      startX: number;
+      startY: number;
+      minDeltaX: number;
+      maxDeltaX: number;
+      minDeltaY: number;
+      maxDeltaY: number;
+    }
+  | undefined;
 
 const MUTATING_TOOLS = new Set([
   "add_project",
@@ -224,6 +238,71 @@ const handleKeydown = (event: KeyboardEvent) => {
   }
 };
 
+const movePanel = (event: PointerEvent) => {
+  if (!dragState) return;
+  const deltaX = Math.min(
+    dragState.maxDeltaX,
+    Math.max(dragState.minDeltaX, event.clientX - dragState.pointerX),
+  );
+  const deltaY = Math.min(
+    dragState.maxDeltaY,
+    Math.max(dragState.minDeltaY, event.clientY - dragState.pointerY),
+  );
+  panelOffset.value = {
+    x: dragState.startX + deltaX,
+    y: dragState.startY + deltaY,
+  };
+};
+
+const stopMovingPanel = () => {
+  dragState = undefined;
+  dragging.value = false;
+  window.removeEventListener("pointermove", movePanel);
+  window.removeEventListener("pointerup", stopMovingPanel);
+  window.removeEventListener("pointercancel", stopMovingPanel);
+};
+
+const startMovingPanel = (event: PointerEvent) => {
+  if (
+    window.innerWidth < 640 ||
+    event.button !== 0 ||
+    (event.target instanceof Element &&
+      event.target.closest("button, input, textarea, a"))
+  ) {
+    return;
+  }
+  const panel = chatPanel.value;
+  if (!panel) return;
+
+  const margin = 8;
+  const rect = panel.getBoundingClientRect();
+  dragState = {
+    pointerX: event.clientX,
+    pointerY: event.clientY,
+    startX: panelOffset.value.x,
+    startY: panelOffset.value.y,
+    minDeltaX: margin - rect.left,
+    maxDeltaX: window.innerWidth - margin - rect.right,
+    minDeltaY: margin - rect.top,
+    maxDeltaY: window.innerHeight - margin - rect.bottom,
+  };
+  dragging.value = true;
+  window.addEventListener("pointermove", movePanel);
+  window.addEventListener("pointerup", stopMovingPanel);
+  window.addEventListener("pointercancel", stopMovingPanel);
+  event.preventDefault();
+};
+
+const resetPanelPosition = (event?: MouseEvent) => {
+  if (
+    event?.target instanceof Element &&
+    event.target.closest("button, input, textarea, a")
+  ) {
+    return;
+  }
+  panelOffset.value = { x: 0, y: 0 };
+};
+
 const closeOnOutsidePointer = (event: PointerEvent) => {
   if (
     isOpen.value &&
@@ -240,6 +319,7 @@ onMounted(() =>
 );
 onUnmounted(() => {
   document.removeEventListener("pointerdown", closeOnOutsidePointer, true);
+  stopMovingPanel();
   activeRequest?.abort();
 });
 </script>
@@ -249,10 +329,20 @@ onUnmounted(() => {
     <section
       v-if="isOpen"
       ref="chatPanel"
-      class="fixed inset-x-2 bottom-[calc(5rem+env(safe-area-inset-bottom))] top-[calc(4rem+env(safe-area-inset-top))] z-[120] flex min-h-0 flex-col overflow-hidden rounded-2xl border border-brand-primary/20 bg-brand-container shadow-2xl shadow-black/60 sm:inset-auto sm:bottom-24 sm:left-5 sm:h-[min(680px,calc(100dvh-8rem))] sm:w-[min(430px,calc(100vw-2.5rem))] lg:left-[calc(16rem+1.75rem)]"
+      class="chat-window fixed inset-x-2 bottom-[calc(5rem+env(safe-area-inset-bottom))] top-[calc(4rem+env(safe-area-inset-top))] z-[120] flex min-h-0 flex-col overflow-hidden rounded-2xl border border-brand-primary/20 bg-brand-container shadow-2xl shadow-black/60 sm:inset-auto sm:bottom-24 sm:left-5 sm:h-[min(680px,calc(100dvh-8rem))] sm:w-[min(430px,calc(100vw-2.5rem))] lg:left-[calc(16rem+1.75rem)]"
+      :class="{ 'sm:cursor-grabbing': dragging }"
+      :style="{
+        '--chat-offset-x': `${panelOffset.x}px`,
+        '--chat-offset-y': `${panelOffset.y}px`,
+      }"
       aria-label="AI Chat"
     >
-      <header class="shrink-0 border-b border-white/5 px-3 py-3 sm:px-4">
+      <header
+        class="shrink-0 border-b border-white/5 px-3 py-3 sm:cursor-move sm:select-none sm:px-4"
+        title="Chatfenster ziehen · Doppelklick setzt Position zurück"
+        @pointerdown="startMovingPanel"
+        @dblclick="resetPanelPosition"
+      >
         <div class="flex items-center gap-3">
           <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-primary/15 text-brand-primary">
             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
@@ -418,9 +508,21 @@ onUnmounted(() => {
 .chat-panel-leave-active {
   transition: opacity 180ms ease, transform 180ms ease;
 }
+.chat-window {
+  transform: translate3d(
+    var(--chat-offset-x, 0),
+    var(--chat-offset-y, 0),
+    0
+  );
+}
 .chat-panel-enter-from,
 .chat-panel-leave-to {
   opacity: 0;
-  transform: translateY(12px) scale(0.98);
+  transform: translate3d(
+      var(--chat-offset-x, 0),
+      calc(var(--chat-offset-y, 0) + 12px),
+      0
+    )
+    scale(0.98);
 }
 </style>
