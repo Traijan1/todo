@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { onMounted } from "vue";
-import { useProjectStore } from "../../stores/projects";
 import { storeToRefs } from "pinia";
+import { onMounted } from "vue";
+import { useAiContextStore } from "../../stores/aiContext";
+import { useProjectStore } from "../../stores/projects";
 
 const projectStore = useProjectStore();
+const aiContext = useAiContextStore();
 const { projects } = storeToRefs(projectStore);
 
 const formatDate = (dateStr: string) =>
@@ -46,6 +48,7 @@ onMounted(async () => {
       v-for="project in projects"
       :key="project.pid"
       :to="{ name: 'project-detail', params: { pid: project.pid } }"
+      @click="aiContext.selectProject(project.pid)"
       class="group flex flex-col p-5 rounded-2xl bg-brand-container border border-brand-primary/10 hover:border-brand-primary/25 transition-all duration-200 hover:shadow-lg hover:shadow-brand-primary/5 active:scale-[0.98]"
     >
       <!-- Top row: icon + date -->

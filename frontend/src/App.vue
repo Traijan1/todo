@@ -1,11 +1,13 @@
 <script setup lang="ts">
+import { computed, onMounted, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { useAiContextStore } from "./stores/aiContext";
 import { useAuthStore } from "./stores/auth";
 import { useProjectStore } from "./stores/projects";
-import { useRouter, useRoute } from "vue-router";
-import { computed, ref, onMounted, watch, nextTick } from "vue";
 
 const auth = useAuthStore();
 const projectStore = useProjectStore();
+const aiContext = useAiContextStore();
 const router = useRouter();
 const route = useRoute();
 
@@ -32,6 +34,7 @@ const mobileTitle = computed(() => {
 });
 
 const handleLogout = () => {
+  aiContext.clear();
   auth.logout();
   router.push("/login");
 };
@@ -47,6 +50,17 @@ const loadProjects = async () => {
 
 onMounted(loadProjects);
 watch(() => auth.user, loadProjects);
+watch(
+  () => route.params.pid,
+  (pid) => {
+    if (typeof pid === "string") {
+      aiContext.selectProject(pid);
+    } else {
+      aiContext.clear();
+    }
+  },
+  { immediate: true },
+);
 </script>
 
 <template>
@@ -127,7 +141,7 @@ watch(() => auth.user, loadProjects);
             v-for="project in projectStore.projects"
             :key="project.pid"
             :to="`/projects/${project.pid}`"
-            @click="isSidebarOpen = false"
+            @click="aiContext.selectProject(project.pid); isSidebarOpen = false"
             class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-brand-text-muted hover:text-brand-text hover:bg-white/5 transition-all"
             active-class="!bg-brand-primary/10 !text-brand-primary !font-semibold"
           >

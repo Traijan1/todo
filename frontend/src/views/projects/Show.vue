@@ -1,25 +1,26 @@
 <script setup lang="ts">
+import { storeToRefs } from "pinia";
 import {
   computed,
+  nextTick,
   onMounted,
   onUnmounted,
   ref,
-  nextTick,
   shallowRef,
   watch,
 } from "vue";
-import { storeToRefs } from "pinia";
+import draggable from "vuedraggable";
+import { lastMutationTime } from "../../api/client";
+import type { Board, Todo } from "../../api/models";
+import SideDrawer from "../../components/SideDrawer.vue";
+import { useAiContextStore } from "../../stores/aiContext";
 import { useBoardStore } from "../../stores/boards";
 import { useProjectStore } from "../../stores/projects";
-import { useTodoStore } from "../../stores/todos";
 import { useTagStore } from "../../stores/tags";
-import draggable from "vuedraggable";
-import SideDrawer from "../../components/SideDrawer.vue";
-import TaskDrawer from "./drawers/TaskDrawer.vue";
-import BoardDrawer from "./drawers/BoardDrawer.vue";
+import { useTodoStore } from "../../stores/todos";
 import BoardColumn from "./components/BoardColumn.vue";
-import type { Todo, Board } from "../../api/models";
-import { lastMutationTime } from "../../api/client";
+import BoardDrawer from "./drawers/BoardDrawer.vue";
+import TaskDrawer from "./drawers/TaskDrawer.vue";
 
 const props = defineProps<{
   pid: string;
@@ -29,6 +30,7 @@ const projectStore = useProjectStore();
 const boardStore = useBoardStore();
 const todoStore = useTodoStore();
 const tagStore = useTagStore();
+const aiContext = useAiContextStore();
 const { boards } = storeToRefs(boardStore);
 
 const activeDrawer = shallowRef<any>(null);
@@ -65,6 +67,7 @@ const isBoardOpen = (boardPid: string) =>
   boardOpenState.value[boardPid] ?? true;
 
 const toggleBoardOpen = (boardPid: string) => {
+  aiContext.selectBoard(boardPid, props.pid);
   boardOpenState.value[boardPid] = !isBoardOpen(boardPid);
   localStorage.setItem(`boards-open-${props.pid}`, JSON.stringify(boardOpenState.value));
 };
@@ -113,6 +116,7 @@ const closeDrawer = () => {
 };
 
 const openCreateTask = async (boardPid: string) => {
+  aiContext.selectBoard(boardPid, props.pid);
   selectedTodo.value = null;
   drawerData.value = { todo: null, boardPid, projectPid: props.pid };
   activeDrawer.value = TaskDrawer;
@@ -121,6 +125,7 @@ const openCreateTask = async (boardPid: string) => {
 };
 
 const openEditTask = async (todo: Todo) => {
+  aiContext.selectTodo(todo.pid, todo.board_pid, props.pid);
   selectedTodo.value = todo;
   drawerData.value = { todo, boardPid: null, projectPid: props.pid };
   activeDrawer.value = TaskDrawer;
@@ -129,6 +134,7 @@ const openEditTask = async (todo: Todo) => {
 };
 
 const openEditBoard = (board: Board) => {
+  aiContext.selectBoard(board.pid, props.pid);
   selectedBoard.value = board;
   drawerData.value = { board };
   activeDrawer.value = BoardDrawer;
@@ -143,19 +149,21 @@ const handleTaskSave = async (form: {
 }) => {
   try {
     if (selectedTodo.value) {
-      await todoStore.updateTodo(selectedTodo.value.pid, {
+      const savedTodo = await todoStore.updateTodo(selectedTodo.value.pid, {
         title: form.title,
         details: form.description,
         tags: form.tags,
         locked: form.locked,
         board_pid: form.boardPid,
       });
+      aiContext.selectTodo(savedTodo.pid, savedTodo.board_pid, props.pid);
     } else {
-      await todoStore.createTodo(drawerData.value.boardPid, {
+      const createdTodo = await todoStore.createTodo(drawerData.value.boardPid, {
         title: form.title,
         details: form.description,
         tags: form.tags,
       });
+      aiContext.selectTodo(createdTodo.pid, createdTodo.board_pid, props.pid);
     }
     await boardStore.fetchBoards(props.pid);
     closeDrawer();
@@ -198,6 +206,9 @@ const handleSubtaskChanged = async () => {
 const deleteTask = async (todo: Todo) => {
   if (confirm(`Delete "${todo.title}"?`)) {
     await todoStore.deleteTodo(todo.pid);
+    if (aiContext.todoId === todo.pid) {
+      aiContext.selectBoard(todo.board_pid, props.pid);
+    }
     await boardStore.fetchBoards(props.pid);
     if (selectedTodo.value?.pid === todo.pid) closeDrawer();
   }
@@ -209,6 +220,9 @@ const handleMove = async (event: any, boardPid: string) => {
       board_pid: boardPid,
     });
     await boardStore.reorderTodos(boardPid);
+    if (aiContext.todoId === event.added.element.pid) {
+      aiContext.selectTodo(event.added.element.pid, boardPid, props.pid);
+    }
   } else if (event.moved) {
     await boardStore.reorderTodos(boardPid);
   }
@@ -303,6 +317,8 @@ const scrollToBoard = (index: number) => {
     behavior: "smooth",
   });
   activeBoardIndex.value = index;
+  const board = boards.value[index];
+  if (board) aiContext.selectBoard(board.pid, props.pid);
 };
 
 const handleGlobalClick = () => {
@@ -357,6 +373,7 @@ onUnmounted(() => {
 });
 
 const loadProject = async (pid: string) => {
+  aiContext.selectProject(pid);
   closeDrawer();
   activeTagFilters.value = [];
   viewMode.value = (localStorage.getItem(`view-mode-${pid}`) as ViewMode) || "board";
