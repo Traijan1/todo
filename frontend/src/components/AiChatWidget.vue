@@ -230,7 +230,7 @@ onUnmounted(() => activeRequest?.abort());
   <Transition name="chat-panel">
     <section
       v-if="isOpen"
-      class="fixed inset-x-2 bottom-[calc(5rem+env(safe-area-inset-bottom))] top-[calc(4rem+env(safe-area-inset-top))] z-[70] flex min-h-0 flex-col overflow-hidden rounded-2xl border border-brand-primary/20 bg-brand-container shadow-2xl shadow-black/60 sm:inset-auto sm:bottom-24 sm:right-5 sm:h-[min(680px,calc(100dvh-8rem))] sm:w-[min(430px,calc(100vw-2.5rem))] lg:right-7"
+      class="fixed inset-x-2 bottom-[calc(5rem+env(safe-area-inset-bottom))] top-[calc(4rem+env(safe-area-inset-top))] z-[120] flex min-h-0 flex-col overflow-hidden rounded-2xl border border-brand-primary/20 bg-brand-container shadow-2xl shadow-black/60 sm:inset-auto sm:bottom-24 sm:left-5 sm:h-[min(680px,calc(100dvh-8rem))] sm:w-[min(430px,calc(100vw-2.5rem))] lg:left-[calc(16rem+1.75rem)]"
       aria-label="AI Chat"
     >
       <header class="shrink-0 border-b border-white/5 px-3 py-3 sm:px-4">
@@ -383,7 +383,7 @@ onUnmounted(() => activeRequest?.abort());
   <button
     v-if="!isOpen"
     type="button"
-    class="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 z-[69] flex h-13 w-13 items-center justify-center rounded-2xl bg-brand-primary text-brand-container shadow-xl shadow-brand-primary/20 transition-transform hover:scale-105 active:scale-95 sm:bottom-5 sm:right-5 lg:right-7"
+    class="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-4 z-[120] flex h-13 w-13 items-center justify-center rounded-2xl bg-brand-primary text-brand-container shadow-xl shadow-brand-primary/20 transition-transform hover:scale-105 active:scale-95 sm:bottom-5 sm:left-5 lg:left-[calc(16rem+1.75rem)]"
     aria-label="AI Chat öffnen"
     title="AI Chat öffnen"
     @click="open"
