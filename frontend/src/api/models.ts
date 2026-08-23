@@ -12,7 +12,7 @@ export interface Project {
   mcp_expose_comments: boolean;
   ai_provider?: string;
   ai_model?: string;
-  ai_prompt?: string;
+  ai_system_prompt?: string;
   created_at: string;
   updated_at: string;
 }
@@ -39,6 +39,7 @@ export interface AiTestResult {
   ok: boolean;
   model: string;
   response: string;
+  thinking?: string;
   duration_ms: number;
   eval_count?: number;
   total_duration?: number;

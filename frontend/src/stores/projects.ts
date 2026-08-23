@@ -57,7 +57,7 @@ export const useProjectStore = defineStore("projects", () => {
     mcp_expose_comments?: boolean;
     ai_provider?: string;
     ai_model?: string;
-    ai_prompt?: string;
+    ai_system_prompt?: string;
   }) {
     const response = await api.put(`/projects/${pid}`, payload);
     const idx = projects.value.findIndex((p) => p.pid === pid);

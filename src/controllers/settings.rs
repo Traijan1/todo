@@ -124,57 +124,15 @@ pub async fn test_ollama_prompt(
     }
     let clean_url = base_url.trim_end_matches('/');
 
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(120))
-        .build()
-        .map_err(|_| Error::InternalServerError)?;
+    let result = crate::services::ollama::generate(
+        clean_url,
+        params.model,
+        &params.prompt,
+        params.system_prompt.as_deref(),
+    )
+    .await?;
 
-    let mut body = serde_json::json!({
-        "model": params.model,
-        "prompt": params.prompt,
-        "stream": false,
-    });
-
-    if let Some(sys) = &params.system_prompt {
-        if !sys.trim().is_empty() {
-            body["system"] = serde_json::json!(sys);
-        }
-    }
-
-    let start_time = std::time::Instant::now();
-    let url = format!("{clean_url}/api/generate");
-    let res =
-        client.post(&url).json(&body).send().await.map_err(|e| {
-            Error::BadRequest(format!("Failed to reach Ollama at {clean_url}: {e}"))
-        })?;
-
-    if !res.status().is_success() {
-        let err_text = res.text().await.unwrap_or_default();
-        return Err(Error::BadRequest(format!(
-            "Ollama generation error: {err_text}"
-        )));
-    }
-
-    let json: serde_json::Value = res
-        .json()
-        .await
-        .map_err(|e| Error::BadRequest(format!("Failed to parse response: {e}")))?;
-
-    let duration_ms = start_time.elapsed().as_millis();
-    let response_text = json
-        .get("response")
-        .and_then(|v| v.as_str())
-        .unwrap_or("")
-        .to_string();
-
-    format::json(serde_json::json!({
-        "ok": true,
-        "model": params.model,
-        "response": response_text,
-        "duration_ms": duration_ms,
-        "eval_count": json.get("eval_count"),
-        "total_duration": json.get("total_duration"),
-    }))
+    format::json(result)
 }
 
 pub fn routes() -> Routes {

@@ -18,7 +18,7 @@ pub struct Model {
     pub ai_provider: Option<String>,
     pub ai_model: Option<String>,
     #[sea_orm(column_type = "Text", nullable)]
-    pub ai_prompt: Option<String>,
+    pub ai_system_prompt: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

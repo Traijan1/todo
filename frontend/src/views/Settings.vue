@@ -2,6 +2,7 @@
 import { ref, onMounted } from "vue";
 import { useSettingsStore } from "../stores/settings";
 import type { AiTestResult } from "../api/models";
+import AiResponseWidget from "../components/AiResponseWidget.vue";
 
 const settingsStore = useSettingsStore();
 
@@ -19,7 +20,6 @@ const testModel = ref("");
 const testSystemPrompt = ref("Du bist ein hilfreicher KI-Assistent für ein Todo- und Projektmanagement-System.");
 const testResult = ref<AiTestResult | null>(null);
 const testError = ref("");
-const copiedResponse = ref(false);
 
 onMounted(async () => {
   settingsStore.resetConnectionState(true);
@@ -81,16 +81,6 @@ const runTestPrompt = async () => {
         err.response?.data?.error ||
         err.message ||
         "Test-Prompt fehlgeschlagen";
-  }
-};
-
-const copyResponse = async () => {
-  if (testResult.value?.response) {
-    await navigator.clipboard.writeText(testResult.value.response);
-    copiedResponse.value = true;
-    setTimeout(() => {
-      copiedResponse.value = false;
-    }, 2000);
   }
 };
 
@@ -328,39 +318,7 @@ const formatBytes = (bytes?: number) => {
           <p class="font-mono text-[11px] break-all">{{ testError }}</p>
         </div>
 
-        <!-- Test Result Output -->
-        <div v-if="testResult" class="p-4 rounded-xl bg-white/5 border border-brand-primary/15 space-y-3">
-          <div class="flex items-center justify-between gap-2 pb-2 border-b border-white/5">
-            <div class="flex items-center gap-2">
-              <span class="text-[10px] font-black uppercase tracking-wider text-brand-primary">Antwort</span>
-              <span class="text-[10px] font-mono px-2 py-0.5 rounded-md bg-brand-primary/10 text-brand-primary">
-                {{ testResult.model }}
-              </span>
-            </div>
-            <div class="flex items-center gap-3">
-              <span v-if="testResult.duration_ms" class="text-[10px] font-mono text-brand-text-muted/60">
-                ⏱ {{ (testResult.duration_ms / 1000).toFixed(2) }}s
-              </span>
-              <button
-                type="button"
-                class="text-xs text-brand-primary/60 hover:text-brand-primary transition-colors flex items-center gap-1"
-                @click="copyResponse"
-                title="Antwort kopieren"
-              >
-                <svg v-if="!copiedResponse" xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
-                <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                </svg>
-                {{ copiedResponse ? 'Kopiert!' : 'Kopieren' }}
-              </button>
-            </div>
-          </div>
-          <div class="text-xs leading-relaxed whitespace-pre-wrap text-brand-text select-text font-normal">
-            {{ testResult.response }}
-          </div>
-        </div>
+        <AiResponseWidget v-if="testResult" :result="testResult" />
       </div>
     </section>
   </div>

@@ -6,6 +6,7 @@ import { useAuthStore } from "../../stores/auth";
 import { useSettingsStore } from "../../stores/settings";
 import { storeToRefs } from "pinia";
 import type { Member, AiTestResult } from "../../api/models";
+import AiResponseWidget from "../../components/AiResponseWidget.vue";
 
 const props = defineProps<{ pid: string }>();
 const router = useRouter();
@@ -21,7 +22,7 @@ const form = ref({
   mcp_expose_comments: true,
   ai_provider: "ollama",
   ai_model: "",
-  ai_prompt: "",
+  ai_system_prompt: "",
 });
 
 const saving = ref(false);
@@ -40,7 +41,6 @@ const testPromptText = ref("Welche Schritte empfiehlst du für den nächsten Mei
 const testingProjectAi = ref(false);
 const projectAiTestResult = ref<AiTestResult | null>(null);
 const projectAiTestError = ref("");
-const copiedTestResponse = ref(false);
 
 const isOwner = computed(() =>
   members.value.some((m) => m.pid === user.value?.pid && m.role === "owner")
@@ -55,7 +55,7 @@ onMounted(async () => {
       mcp_expose_comments: project.value.mcp_expose_comments ?? true,
       ai_provider: project.value.ai_provider ?? "ollama",
       ai_model: project.value.ai_model ?? "",
-      ai_prompt: project.value.ai_prompt ?? "",
+      ai_system_prompt: project.value.ai_system_prompt ?? "",
     };
   }
   members.value = await projectStore.fetchMembers(props.pid);
@@ -107,7 +107,7 @@ const save = async () => {
       mcp_expose_comments: form.value.mcp_expose_comments,
       ai_provider: form.value.ai_provider,
       ai_model: form.value.ai_model.trim() || undefined,
-      ai_prompt: form.value.ai_prompt.trim() || undefined,
+      ai_system_prompt: form.value.ai_system_prompt.trim() || undefined,
     });
     saved.value = true;
     setTimeout(() => (saved.value = false), 2000);
@@ -125,7 +125,7 @@ const runProjectAiTest = async () => {
     const res = await projectStore.testProjectAi(props.pid, {
       prompt: testPromptText.value.trim(),
       model: form.value.ai_model.trim() || undefined,
-      system_prompt: form.value.ai_prompt.trim() || undefined,
+      system_prompt: form.value.ai_system_prompt.trim() || undefined,
     });
     projectAiTestResult.value = res;
   } catch (e: any) {
@@ -137,14 +137,6 @@ const runProjectAiTest = async () => {
         "AI-Test fehlgeschlagen";
   } finally {
     testingProjectAi.value = false;
-  }
-};
-
-const copyAiResponse = async () => {
-  if (projectAiTestResult.value?.response) {
-    await navigator.clipboard.writeText(projectAiTestResult.value.response);
-    copiedTestResponse.value = true;
-    setTimeout(() => (copiedTestResponse.value = false), 2000);
   }
 };
 
@@ -265,7 +257,7 @@ const confirmDelete = async () => {
         <div class="space-y-1.5">
           <label class="brand-label">Projekt-Kontext & System-Prompt (optional)</label>
           <textarea
-            v-model="form.ai_prompt"
+            v-model="form.ai_system_prompt"
             class="brand-textarea text-xs max-h-48 overflow-y-auto resize-y"
             rows="3"
             placeholder="z. B. Du bist der Lead-Entwickler für dieses Rust/Vue-Projekt. Antworte präzise und lösungsorientiert."
@@ -330,27 +322,7 @@ const confirmDelete = async () => {
               <p class="font-mono text-[11px] break-all">{{ projectAiTestError }}</p>
             </div>
 
-            <!-- Test output -->
-            <div v-if="projectAiTestResult" class="p-3 rounded-lg bg-black/20 border border-brand-primary/10 space-y-2">
-              <div class="flex items-center justify-between text-[10px]">
-                <span class="font-mono text-brand-primary">{{ projectAiTestResult.model }}</span>
-                <div class="flex items-center gap-2">
-                  <span v-if="projectAiTestResult.duration_ms" class="text-brand-text-muted/60">
-                    {{ (projectAiTestResult.duration_ms / 1000).toFixed(2) }}s
-                  </span>
-                  <button
-                    type="button"
-                    class="text-brand-primary hover:underline flex items-center gap-1"
-                    @click="copyAiResponse"
-                  >
-                    {{ copiedTestResponse ? 'Kopiert!' : 'Kopieren' }}
-                  </button>
-                </div>
-              </div>
-              <p class="text-xs text-brand-text whitespace-pre-wrap leading-relaxed">
-                {{ projectAiTestResult.response }}
-              </p>
-            </div>
+            <AiResponseWidget v-if="projectAiTestResult" :result="projectAiTestResult" />
           </div>
         </div>
       </section>
