@@ -151,7 +151,7 @@ const applyResult = (result: ChatResult) => {
   messages.value.push({
     id: nextMessageId++,
     role: "assistant",
-    content: result.response || "Die Aktion wurde ausgeführt.",
+    content: result.response || "Das Modell hat keine Textantwort geliefert.",
     thinking: result.thinking,
     provider: result.provider_id,
     model: result.model,

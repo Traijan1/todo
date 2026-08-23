@@ -190,10 +190,12 @@ pub async fn chat(
     let mut body = serde_json::json!({
         "model": model,
         "messages": messages,
-        "tools": tools,
         "stream": false,
         "think": true,
     });
+    if tools.as_array().is_some_and(|tools| !tools.is_empty()) {
+        body["tools"] = tools.clone();
+    }
     let url = format!("{clean_url}/api/chat");
     let mut response = client
         .post(&url)

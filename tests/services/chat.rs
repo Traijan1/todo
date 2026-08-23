@@ -47,6 +47,27 @@ async fn fake_ollama(
             .iter()
             .any(|message| message["role"] == "tool" && message["tool_name"] == "get_projects")
     }));
+    if call == 1 {
+        return Json(json!({
+            "model": "test-model",
+            "message": {
+                "role": "assistant",
+                "content": ""
+            },
+            "eval_count": 2,
+            "total_duration": 5
+        }));
+    }
+
+    assert!(body.get("tools").is_none());
+    assert!(body["messages"].as_array().is_some_and(|messages| {
+        messages.last().is_some_and(|message| {
+            message["role"] == "user"
+                && message["content"]
+                    .as_str()
+                    .is_some_and(|content| content.contains("abschließende Antwort"))
+        })
+    }));
     Json(json!({
         "model": "test-model",
         "message": {
@@ -110,11 +131,11 @@ async fn agent_loop_executes_the_shared_tool_and_returns_the_final_answer() {
 
     assert_eq!(result.response, "Du hast aktuell keine Projekte.");
     assert_eq!(result.provider_id, "fake");
-    assert_eq!(result.eval_count, Some(10));
+    assert_eq!(result.eval_count, Some(12));
     assert_eq!(result.tools.len(), 1);
     assert_eq!(result.tools[0].name, "get_projects");
     assert!(result.tools[0].success);
-    assert_eq!(calls.load(Ordering::SeqCst), 2);
+    assert_eq!(calls.load(Ordering::SeqCst), 3);
     assert!(progress.lock().unwrap().iter().any(
         |event| matches!(event, ChatProgress::RunningTool { name } if name == "get_projects")
     ));

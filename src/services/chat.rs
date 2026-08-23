@@ -90,6 +90,7 @@ where
     );
 
     let tool_definitions = tools::ollama_definitions_for_context(&context);
+    let no_tool_definitions = Value::Array(Vec::new());
     let started = Instant::now();
     let mut thinking_parts = Vec::new();
     let mut tool_runs = Vec::new();
@@ -98,12 +99,18 @@ where
     let mut has_eval_count = false;
     let mut total_duration = 0_u64;
     let mut has_total_duration = false;
+    let mut finalization_requested = false;
 
     for _ in 0..MAX_AGENT_STEPS {
         progress(ChatProgress::Thinking);
+        let active_tool_definitions = if finalization_requested {
+            &no_tool_definitions
+        } else {
+            &tool_definitions
+        };
         let generated = match &provider.connection {
             AiProviderConnection::Ollama { base_url } => {
-                ollama::chat(base_url, model.clone(), &messages, &tool_definitions).await?
+                ollama::chat(base_url, model.clone(), &messages, active_tool_definitions).await?
             }
         };
         if let Some(count) = generated.eval_count {
@@ -136,7 +143,26 @@ where
             .to_owned();
         messages.push(assistant_message);
 
+        if finalization_requested && !calls.is_empty() {
+            return Err(Error::BadRequest(
+                "AI provider requested another tool during finalization".into(),
+            ));
+        }
+
         if calls.is_empty() {
+            if response.is_empty() {
+                if finalization_requested {
+                    return Err(Error::BadRequest(
+                        "AI provider returned an empty final response".into(),
+                    ));
+                }
+                finalization_requested = true;
+                messages.push(json!({
+                    "role": "user",
+                    "content": "Formuliere jetzt eine vollständige abschließende Antwort für den Nutzer. Nutze die bereits vorliegenden Tool-Ergebnisse, führe keine weiteren Aktionen aus und gib nicht nur deinen Denkprozess wieder."
+                }));
+                continue;
+            }
             return Ok(ChatResult {
                 ok: true,
                 provider_id: provider.id.clone(),
