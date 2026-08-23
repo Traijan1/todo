@@ -322,7 +322,14 @@ const confirmDelete = async () => {
               <p class="font-mono text-[11px] break-all">{{ projectAiTestError }}</p>
             </div>
 
-            <AiResponseWidget v-if="projectAiTestResult" :result="projectAiTestResult" />
+            <AiResponseWidget
+              v-if="projectAiTestResult"
+              :response="projectAiTestResult.response"
+              :thinking="projectAiTestResult.thinking"
+              :model="projectAiTestResult.model"
+              :duration-ms="projectAiTestResult.duration_ms"
+              title="AI-Testergebnis"
+            />
           </div>
         </div>
       </section>

@@ -318,7 +318,14 @@ const formatBytes = (bytes?: number) => {
           <p class="font-mono text-[11px] break-all">{{ testError }}</p>
         </div>
 
-        <AiResponseWidget v-if="testResult" :result="testResult" />
+        <AiResponseWidget
+          v-if="testResult"
+          :response="testResult.response"
+          :thinking="testResult.thinking"
+          :model="testResult.model"
+          :duration-ms="testResult.duration_ms"
+          title="AI-Testergebnis"
+        />
       </div>
     </section>
   </div>
