@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onUnmounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import {
   type ChatResult,
   type ChatToolRun,
@@ -32,6 +32,7 @@ const input = ref("");
 const messages = ref<UiMessage[]>([]);
 const loading = ref(false);
 const status = ref("Denke nach …");
+const chatPanel = ref<HTMLElement | null>(null);
 const scrollArea = ref<HTMLElement | null>(null);
 const inputArea = ref<HTMLTextAreaElement | null>(null);
 let nextMessageId = 1;
@@ -223,13 +224,31 @@ const handleKeydown = (event: KeyboardEvent) => {
   }
 };
 
-onUnmounted(() => activeRequest?.abort());
+const closeOnOutsidePointer = (event: PointerEvent) => {
+  if (
+    isOpen.value &&
+    chatPanel.value &&
+    event.target instanceof Node &&
+    !chatPanel.value.contains(event.target)
+  ) {
+    isOpen.value = false;
+  }
+};
+
+onMounted(() =>
+  document.addEventListener("pointerdown", closeOnOutsidePointer, true),
+);
+onUnmounted(() => {
+  document.removeEventListener("pointerdown", closeOnOutsidePointer, true);
+  activeRequest?.abort();
+});
 </script>
 
 <template>
   <Transition name="chat-panel">
     <section
       v-if="isOpen"
+      ref="chatPanel"
       class="fixed inset-x-2 bottom-[calc(5rem+env(safe-area-inset-bottom))] top-[calc(4rem+env(safe-area-inset-top))] z-[120] flex min-h-0 flex-col overflow-hidden rounded-2xl border border-brand-primary/20 bg-brand-container shadow-2xl shadow-black/60 sm:inset-auto sm:bottom-24 sm:left-5 sm:h-[min(680px,calc(100dvh-8rem))] sm:w-[min(430px,calc(100vw-2.5rem))] lg:left-[calc(16rem+1.75rem)]"
       aria-label="AI Chat"
     >
