@@ -23,6 +23,7 @@ services:
       - "traefik.http.routers.todo.tls=true"
       - "traefik.http.routers.todo.tls.certresolver=mytlschallenge"
       - "traefik.http.services.todo.loadbalancer.server.port=5150"
+      - "traefik.http.services.todo.loadbalancer.serverstransport=todo-unlimited@file"
 
 networks:
   proxy:

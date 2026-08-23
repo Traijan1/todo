@@ -78,7 +78,9 @@ pub async fn generate(
     }
 
     let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(120))
+        // Ollama inference can legitimately take a long time for large models.
+        // Limit only establishing the connection, not the generation itself.
+        .connect_timeout(std::time::Duration::from_secs(10))
         .build()
         .map_err(|_| Error::InternalServerError)?;
 
@@ -184,7 +186,10 @@ pub async fn chat(
     }
 
     let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(120))
+        // Tool-enabled agent turns can require several consecutive generations.
+        // Keep each connected Ollama request open until it completes or the
+        // browser cancels the surrounding task.
+        .connect_timeout(std::time::Duration::from_secs(10))
         .build()
         .map_err(|_| Error::InternalServerError)?;
     let mut body = serde_json::json!({
