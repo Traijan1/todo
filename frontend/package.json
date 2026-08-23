@@ -24,6 +24,8 @@
     "@tiptap/vue-3": "^3.22.5",
     "@vee-validate/zod": "^4.15.1",
     "axios": "^1.15.2",
+    "dompurify": "^3.4.14",
+    "marked": "^17.0.6",
     "pinia": "^3.0.4",
     "tailwindcss": "^4.2.4",
     "vee-validate": "^4.15.1",

@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import DOMPurify from "dompurify";
+import { marked } from "marked";
+import { computed, ref } from "vue";
 
 const props = withDefaults(
   defineProps<{
@@ -27,6 +29,39 @@ const props = withDefaults(
 
 const thinkingOpen = ref(props.defaultThinkingOpen);
 const copied = ref<"thinking" | "response" | null>(null);
+
+const renderedResponse = computed(() => {
+  if (!props.response) return "";
+
+  const html = marked.parse(props.response, {
+    async: false,
+    breaks: true,
+    gfm: true,
+  }) as string;
+
+  return DOMPurify.sanitize(html, {
+    USE_PROFILES: { html: true },
+    SANITIZE_NAMED_PROPS: true,
+    ALLOW_DATA_ATTR: false,
+    FORBID_ATTR: ["style"],
+    FORBID_TAGS: [
+      "audio",
+      "button",
+      "embed",
+      "form",
+      "iframe",
+      "img",
+      "input",
+      "object",
+      "option",
+      "select",
+      "source",
+      "style",
+      "textarea",
+      "video",
+    ],
+  });
+});
 
 const copy = async (kind: "thinking" | "response") => {
   const text = kind === "thinking" ? props.thinking : props.response;
@@ -127,12 +162,13 @@ const copy = async (kind: "thinking" | "response") => {
       </div>
 
       <div
-        class="min-w-0 whitespace-pre-wrap break-words px-3 pb-4 text-xs leading-relaxed text-brand-text [overflow-wrap:anywhere] sm:px-4"
+        class="min-w-0 px-3 pb-4 text-xs leading-relaxed text-brand-text [overflow-wrap:anywhere] sm:px-4"
         :aria-busy="props.streaming"
         :aria-live="props.streaming ? 'polite' : 'off'"
       >
         <slot :response="props.response" :streaming="props.streaming">
-          {{ props.response }}
+          <!-- Provider-controlled Markdown must only reach v-html after sanitizing. -->
+          <div v-if="props.response" class="ai-markdown" v-html="renderedResponse" />
         </slot>
         <span v-if="props.streaming" class="ml-0.5 inline-block h-3 w-1 animate-pulse bg-brand-primary align-middle" aria-hidden="true" />
       </div>
@@ -141,3 +177,137 @@ const copy = async (kind: "thinking" | "response") => {
     </section>
   </article>
 </template>
+
+<style scoped>
+.ai-markdown {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ai-markdown :deep(:first-child) {
+  margin-top: 0;
+}
+
+.ai-markdown :deep(:last-child) {
+  margin-bottom: 0;
+}
+
+.ai-markdown :deep(h1),
+.ai-markdown :deep(h2),
+.ai-markdown :deep(h3),
+.ai-markdown :deep(h4) {
+  margin: 1rem 0 0.45rem;
+  color: var(--color-brand-text);
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.ai-markdown :deep(h1) {
+  font-size: 1.15rem;
+}
+
+.ai-markdown :deep(h2) {
+  font-size: 1rem;
+}
+
+.ai-markdown :deep(h3),
+.ai-markdown :deep(h4) {
+  font-size: 0.875rem;
+}
+
+.ai-markdown :deep(p),
+.ai-markdown :deep(ul),
+.ai-markdown :deep(ol),
+.ai-markdown :deep(blockquote),
+.ai-markdown :deep(pre),
+.ai-markdown :deep(table) {
+  margin: 0.55rem 0;
+}
+
+.ai-markdown :deep(ul),
+.ai-markdown :deep(ol) {
+  padding-left: 1.25rem;
+}
+
+.ai-markdown :deep(ul) {
+  list-style: disc;
+}
+
+.ai-markdown :deep(ol) {
+  list-style: decimal;
+}
+
+.ai-markdown :deep(li) {
+  margin: 0.2rem 0;
+}
+
+.ai-markdown :deep(a) {
+  color: var(--color-brand-primary);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--color-brand-primary) 45%, transparent);
+  text-underline-offset: 0.18em;
+}
+
+.ai-markdown :deep(strong) {
+  color: var(--color-brand-text);
+  font-weight: 800;
+}
+
+.ai-markdown :deep(blockquote) {
+  border-left: 3px solid color-mix(in srgb, var(--color-brand-primary) 45%, transparent);
+  padding-left: 0.75rem;
+  color: var(--color-brand-text-muted);
+}
+
+.ai-markdown :deep(code) {
+  border-radius: 0.3rem;
+  background: rgb(255 255 255 / 7%);
+  padding: 0.1rem 0.3rem;
+  color: #ddd6fe;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.9em;
+}
+
+.ai-markdown :deep(pre) {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid rgb(255 255 255 / 7%);
+  border-radius: 0.65rem;
+  background: rgb(0 0 0 / 28%);
+  padding: 0.75rem;
+}
+
+.ai-markdown :deep(pre code) {
+  background: transparent;
+  padding: 0;
+  color: var(--color-brand-text);
+  font-size: 0.72rem;
+  white-space: pre;
+}
+
+.ai-markdown :deep(hr) {
+  margin: 0.9rem 0;
+  border: 0;
+  border-top: 1px solid rgb(255 255 255 / 8%);
+}
+
+.ai-markdown :deep(table) {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+}
+
+.ai-markdown :deep(th),
+.ai-markdown :deep(td) {
+  border: 1px solid rgb(255 255 255 / 10%);
+  padding: 0.4rem 0.55rem;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.ai-markdown :deep(th) {
+  background: rgb(255 255 255 / 5%);
+  color: var(--color-brand-text);
+}
+</style>
