@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use crate::models::{
     _entities::boards::{self, Column},
-    projects::{self, Projects},
+    projects,
 };
 
 pub use super::_entities::boards::{ActiveModel, Entity, Model};

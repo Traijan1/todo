@@ -8,6 +8,7 @@ pub struct CreateComment {
     pub author: String,
     pub content: String,
     pub is_ai: bool,
+    pub user_id: Option<i32>,
 }
 
 #[async_trait::async_trait]
@@ -37,6 +38,7 @@ impl Model {
             author: Set(params.author),
             content: Set(params.content),
             is_ai: Set(params.is_ai),
+            user_id: Set(params.user_id),
             ..Default::default()
         }
         .insert(db)

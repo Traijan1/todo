@@ -20,13 +20,7 @@ impl MigrationTrait for Migration {
         )
         .await?;
 
-        create_join_table(
-            m,
-            "users_projects",
-            &[],
-            &[("user", ""), ("project", "")],
-        )
-        .await?;
+        create_join_table(m, "users_projects", &[], &[("user", ""), ("project", "")]).await?;
 
         Ok(())
     }

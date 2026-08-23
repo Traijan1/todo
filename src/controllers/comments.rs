@@ -44,9 +44,10 @@ pub async fn add(
         &ctx.db,
         CreateComment {
             todo_id: todo.id,
-            author: user.name,
+            author: user.name.clone(),
             content: params.content,
             is_ai: false,
+            user_id: Some(user.id),
         },
     )
     .await?;
@@ -70,7 +71,9 @@ pub async fn update(
         .await?
         .ok_or(Error::NotFound)?;
 
-    if comment.is_ai || comment.author != user.name {
+    let is_own = comment.user_id == Some(user.id)
+        || (comment.user_id.is_none() && !comment.is_ai && comment.author == user.name);
+    if !is_own {
         return Err(Error::Unauthorized(
             "You can only edit your own comments".into(),
         ));
@@ -98,7 +101,7 @@ pub async fn remove(
         .await?
         .ok_or(Error::NotFound)?;
 
-    if comment.is_ai || comment.author != user.name {
+    if comment.is_ai || comment.user_id != Some(user.id) {
         return Err(Error::Unauthorized(
             "You can only delete your own comments".into(),
         ));

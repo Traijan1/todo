@@ -13,6 +13,7 @@ import { useBoardStore } from "../../stores/boards";
 import { useProjectStore } from "../../stores/projects";
 import { useTodoStore } from "../../stores/todos";
 import { useTagStore } from "../../stores/tags";
+import draggable from "vuedraggable";
 import SideDrawer from "../../components/SideDrawer.vue";
 import TaskDrawer from "./drawers/TaskDrawer.vue";
 import BoardDrawer from "./drawers/BoardDrawer.vue";
@@ -41,6 +42,42 @@ const activeTagFilters = ref<string[]>([]);
 const searchQuery = ref("");
 const showTagDropdown = ref(false);
 const activeBoardIndex = ref(0);
+
+type ViewMode = "board" | "list";
+const viewMode = ref<ViewMode>(
+  (localStorage.getItem(`view-mode-${props.pid}`) as ViewMode) || "board"
+);
+const toggleViewMode = () => {
+  viewMode.value = viewMode.value === "board" ? "list" : "board";
+  localStorage.setItem(`view-mode-${props.pid}`, viewMode.value);
+};
+
+const loadBoardOpenState = (pid: string): Record<string, boolean> => {
+  try {
+    return JSON.parse(localStorage.getItem(`boards-open-${pid}`) || "{}");
+  } catch {
+    return {};
+  }
+};
+const boardOpenState = ref<Record<string, boolean>>(loadBoardOpenState(props.pid));
+
+const isBoardOpen = (boardPid: string) =>
+  boardOpenState.value[boardPid] ?? true;
+
+const toggleBoardOpen = (boardPid: string) => {
+  boardOpenState.value[boardPid] = !isBoardOpen(boardPid);
+  localStorage.setItem(`boards-open-${props.pid}`, JSON.stringify(boardOpenState.value));
+};
+
+const isTodoVisible = (todo: Todo) => {
+  const tagMatch =
+    !activeTagFilters.value.length ||
+    (todo.tags?.some((t) => activeTagFilters.value.includes(t.pid)) ?? false);
+  const searchMatch =
+    !searchQuery.value.trim() ||
+    todo.title.toLowerCase().includes(searchQuery.value.toLowerCase());
+  return tagMatch && searchMatch;
+};
 
 const project = computed(() =>
   projectStore.projects.find((p) => p.pid === props.pid),
@@ -322,6 +359,8 @@ onUnmounted(() => {
 const loadProject = async (pid: string) => {
   closeDrawer();
   activeTagFilters.value = [];
+  viewMode.value = (localStorage.getItem(`view-mode-${pid}`) as ViewMode) || "board";
+  boardOpenState.value = loadBoardOpenState(pid);
   if (!project.value) await projectStore.fetchProjects();
   await Promise.all([boardStore.fetchBoards(pid), tagStore.fetchTags(pid)]);
 };
@@ -338,17 +377,38 @@ watch(
     <!-- Header (desktop only — mobile uses the app header) -->
     <header class="hidden lg:flex items-center justify-between mb-3 shrink-0">
       <h2 class="text-xl font-bold text-brand-primary tracking-tight truncate">{{ project?.title || "Loading..." }}</h2>
-      <RouterLink
-        :to="`/projects/${pid}/settings`"
-        class="p-2 rounded-xl text-brand-text-muted/30 hover:text-brand-primary hover:bg-brand-primary/10 transition-all"
-        title="Projekteinstellungen"
-        @click.stop
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
-      </RouterLink>
+      <div class="flex items-center gap-1">
+        <!-- View Toggle -->
+        <button
+          @click.stop="toggleViewMode"
+          class="p-2 rounded-xl transition-all"
+          :class="viewMode === 'list'
+            ? 'text-brand-primary bg-brand-primary/10'
+            : 'text-brand-text-muted/30 hover:text-brand-primary hover:bg-brand-primary/10'"
+          :title="viewMode === 'board' ? 'Zur Listen-Ansicht wechseln' : 'Zur Board-Ansicht wechseln'"
+        >
+          <!-- Board icon -->
+          <svg v-if="viewMode === 'list'" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+          </svg>
+          <!-- List icon -->
+          <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+          </svg>
+        </button>
+
+        <RouterLink
+          :to="`/projects/${pid}/settings`"
+          class="p-2 rounded-xl text-brand-text-muted/30 hover:text-brand-primary hover:bg-brand-primary/10 transition-all"
+          title="Projekteinstellungen"
+          @click.stop
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </RouterLink>
+      </div>
     </header>
 
     <!-- Filter Bar -->
@@ -453,64 +513,68 @@ watch(
     >
       <!-- Main Content -->
       <div class="flex flex-col min-h-0 min-w-0">
-        <!-- Boards: side-by-side columns, snap on mobile / free scroll on desktop -->
-        <div
-          ref="boardsRef"
-          class="flex-1 min-h-0 min-w-0
-            flex flex-row items-stretch gap-3
-            overflow-x-auto snap-x snap-mandatory scroll-smooth overscroll-x-contain
-            lg:snap-none lg:pb-6
-            custom-scrollbar-x"
-          @scroll.passive="onBoardScroll"
-        >
+
+        <!-- ── BOARD VIEW ──────────────────────────────────────────────────── -->
+        <template v-if="viewMode === 'board'">
           <div
-            v-for="board in boards"
-            :key="board.pid"
-            class="snap-center shrink-0 w-[88vw] sm:w-80 lg:w-72 xl:w-80
-              h-full overflow-y-auto overscroll-y-contain pb-16 lg:pb-4"
+            ref="boardsRef"
+            class="flex-1 min-h-0 min-w-0
+              flex flex-row items-stretch gap-3
+              overflow-x-auto snap-x snap-mandatory scroll-smooth overscroll-x-contain
+              lg:snap-none lg:pb-6
+              custom-scrollbar-x"
+            @scroll.passive="onBoardScroll"
           >
-            <BoardColumn
-              v-model:todos="board.todos"
-              :board="board"
-              :filter-tags="activeTagFilters"
-              :filter-search="searchQuery"
-              @edit-board="openEditBoard(board)"
-              @create-task="openCreateTask(board.pid)"
-              @edit-task="openEditTask"
-              @delete-task="deleteTask"
-              @change="handleMove($event, board.pid)"
-            />
+            <div
+              v-for="board in boards"
+              :key="board.pid"
+              class="snap-center shrink-0 w-[88vw] sm:w-80 lg:w-72 xl:w-80
+                h-full overflow-y-auto overscroll-y-contain pb-16 lg:pb-4"
+            >
+              <BoardColumn
+                v-model:todos="board.todos"
+                :board="board"
+                :filter-tags="activeTagFilters"
+                :filter-search="searchQuery"
+                :open="isBoardOpen(board.pid)"
+                @toggle="toggleBoardOpen(board.pid)"
+                @edit-board="openEditBoard(board)"
+                @create-task="openCreateTask(board.pid)"
+                @edit-task="openEditTask"
+                @delete-task="deleteTask"
+                @change="handleMove($event, board.pid)"
+              />
+            </div>
           </div>
-        </div>
 
-        <!-- Mobile board navigation (in-layout, always visible at bottom) -->
-        <div
-          v-if="boards.length > 1"
-          class="shrink-0 lg:hidden flex items-center gap-3 px-4 py-2.5
-            bg-brand-container/80 backdrop-blur-md border-t border-brand-primary/10"
-          style="padding-bottom: max(0.625rem, env(safe-area-inset-bottom))"
-        >
-          <button
-            class="p-2 rounded-xl transition-all"
-            :class="activeBoardIndex === 0
-              ? 'text-brand-primary/20 cursor-default'
-              : 'text-brand-primary/60 hover:text-brand-primary hover:bg-brand-primary/10'"
-            :disabled="activeBoardIndex === 0"
-            @click="scrollToBoard(activeBoardIndex - 1)"
+          <!-- Mobile board navigation -->
+          <div
+            v-if="boards.length > 1"
+            class="shrink-0 lg:hidden flex items-center gap-3 px-4 py-2.5
+              bg-brand-container/80 backdrop-blur-md border-t border-brand-primary/10"
+            style="padding-bottom: max(0.625rem, env(safe-area-inset-bottom))"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
+            <button
+              class="p-2 rounded-xl transition-all"
+              :class="activeBoardIndex === 0
+                ? 'text-brand-primary/20 cursor-default'
+                : 'text-brand-primary/60 hover:text-brand-primary hover:bg-brand-primary/10'"
+              :disabled="activeBoardIndex === 0"
+              @click="scrollToBoard(activeBoardIndex - 1)"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
 
-          <div class="flex-1 flex flex-col items-center min-w-0">
-            <p class="text-sm font-black text-brand-primary truncate max-w-full">
-              {{ boards[activeBoardIndex]?.title }}
-            </p>
-            <p class="text-[9px] font-bold uppercase tracking-widest text-brand-primary/30">
-              {{ activeBoardIndex + 1 }} / {{ boards.length }}
-            </p>
-          </div>
+            <div class="flex-1 flex flex-col items-center min-w-0">
+              <p class="text-sm font-black text-brand-primary truncate max-w-full">
+                {{ boards[activeBoardIndex]?.title }}
+              </p>
+              <p class="text-[9px] font-bold uppercase tracking-widest text-brand-primary/30">
+                {{ activeBoardIndex + 1 }} / {{ boards.length }}
+              </p>
+            </div>
 
             <button
               class="p-2 rounded-xl transition-all"
@@ -524,7 +588,108 @@ watch(
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" />
               </svg>
             </button>
+          </div>
+        </template>
+
+        <!-- ── LIST VIEW ───────────────────────────────────────────────────── -->
+        <div
+          v-else
+          class="flex-1 min-h-0 overflow-y-auto custom-scrollbar-y pb-6 space-y-2"
+          @click.stop
+        >
+          <div
+            v-for="board in boards"
+            :key="board.pid"
+            class="bg-brand-container/40 backdrop-blur-md rounded-2xl border border-brand-primary/10 shadow-sm overflow-hidden"
+          >
+            <!-- Board header -->
+            <div
+              class="flex items-center justify-between px-5 py-3 cursor-pointer hover:bg-white/5 transition-colors"
+              :class="isBoardOpen(board.pid) ? 'border-b border-brand-primary/8' : ''"
+              @click.stop="toggleBoardOpen(board.pid)"
+            >
+              <div class="flex items-center gap-3">
+                <div
+                  class="w-5 h-5 flex items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary transition-transform duration-200 shrink-0"
+                  :class="{ 'rotate-180': !isBoardOpen(board.pid) }"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+                <button
+                  class="text-sm font-bold text-brand-primary/90 hover:text-brand-primary transition-all"
+                  @click.stop="openEditBoard(board)"
+                >{{ board.title }}</button>
+                <span class="text-[9px] bg-brand-primary/10 text-brand-primary px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                  {{ board.todos?.filter(isTodoVisible).length || 0 }}
+                </span>
+              </div>
+              <button
+                @click.stop="openCreateTask(board.pid)"
+                class="group flex items-center gap-2 pl-1 pr-3 py-1 rounded-xl bg-brand-primary/10 text-brand-primary hover:bg-brand-primary hover:text-brand-container transition-all"
+              >
+                <span class="w-5 h-5 flex items-center justify-center rounded-lg bg-brand-primary/20 group-hover:bg-white/20 transition-colors text-base font-light">+</span>
+                <span class="text-[9px] font-bold uppercase tracking-widest">New</span>
+              </button>
+            </div>
+
+            <!-- Todo rows with drag & drop -->
+            <div v-show="isBoardOpen(board.pid)">
+              <draggable
+                v-model="board.todos"
+                group="todos"
+                item-key="pid"
+                :delay="150"
+                :delay-on-touch-only="true"
+                ghost-class="opacity-40"
+                drag-class="opacity-90"
+                @change="handleMove($event, board.pid)"
+              >
+                <template #item="{ element: todo }">
+                  <div
+                    v-show="isTodoVisible(todo)"
+                    class="flex items-center gap-3 px-5 py-2.5 hover:bg-white/5 transition-colors border-b border-brand-primary/5 last:border-b-0 group/row cursor-grab active:cursor-grabbing"
+                    @click.stop="openEditTask(todo)"
+                  >
+                    <!-- Drag handle -->
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-brand-text-muted/20 shrink-0 opacity-0 group-hover/row:opacity-100 transition-opacity" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M8 6a2 2 0 110-4 2 2 0 010 4zm0 8a2 2 0 110-4 2 2 0 010 4zm0 8a2 2 0 110-4 2 2 0 010 4zm8-16a2 2 0 110-4 2 2 0 010 4zm0 8a2 2 0 110-4 2 2 0 010 4zm0 8a2 2 0 110-4 2 2 0 010 4z"/>
+                    </svg>
+
+                    <div class="w-3.5 h-3.5 rounded-full border border-brand-primary/20 shrink-0 group-hover/row:border-brand-primary/50 transition-colors" />
+
+                    <span class="flex-1 text-[13px] text-brand-text truncate">{{ todo.title }}</span>
+
+                    <!-- Tags -->
+                    <div v-if="todo.tags?.length" class="hidden sm:flex items-center gap-1 shrink-0">
+                      <span
+                        v-for="tag in todo.tags.slice(0, 3)"
+                        :key="tag.pid"
+                        class="text-[9px] font-bold px-1.5 py-0.5 rounded-full border"
+                        :style="tagChipStyle(tag.color)"
+                      >{{ tag.title }}</span>
+                      <span v-if="todo.tags.length > 3" class="text-[9px] text-brand-text-muted/40">+{{ todo.tags.length - 3 }}</span>
+                    </div>
+                  </div>
+                </template>
+
+                <template #footer>
+                  <div v-if="!board.todos?.length" class="flex items-center justify-center py-5">
+                    <p class="text-[10px] font-bold uppercase tracking-widest text-brand-text-muted/25">No tasks yet</p>
+                  </div>
+                  <div
+                    v-else-if="(activeTagFilters.length || searchQuery) && !board.todos.filter(isTodoVisible).length"
+                    class="flex items-center justify-center py-4"
+                  >
+                    <p class="text-[10px] font-bold uppercase tracking-widest text-brand-text-muted/20">No matches</p>
+                  </div>
+                </template>
+              </draggable>
+            </div>
+          </div>
         </div>
+
       </div>
 
       <!-- Desktop Spacer for Drawer -->

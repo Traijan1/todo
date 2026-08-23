@@ -62,7 +62,8 @@ async fn load_item_by_pid(ctx: &AppContext, pid: &Uuid) -> Result<Model> {
 fn build_subtasks_map(
     subtasks_raw: Vec<(todos::Model, Vec<tags::Model>)>,
 ) -> std::collections::HashMap<i32, Vec<SubtaskItem>> {
-    let mut map: std::collections::HashMap<i32, Vec<SubtaskItem>> = std::collections::HashMap::new();
+    let mut map: std::collections::HashMap<i32, Vec<SubtaskItem>> =
+        std::collections::HashMap::new();
     for (subtask, stags) in subtasks_raw {
         if let Some(parent_id) = subtask.parent_id {
             map.entry(parent_id).or_default().push(SubtaskItem {
@@ -123,7 +124,10 @@ pub async fn list(
     let mut todos_by_board: std::collections::HashMap<i32, Vec<(todos::Model, Vec<tags::Model>)>> =
         std::collections::HashMap::new();
     for (todo, todo_tags) in todos_with_tags {
-        todos_by_board.entry(todo.board_id).or_default().push((todo, todo_tags));
+        todos_by_board
+            .entry(todo.board_id)
+            .or_default()
+            .push((todo, todo_tags));
     }
 
     let mut response: Vec<BoardResponse> = Vec::new();

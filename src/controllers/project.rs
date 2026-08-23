@@ -9,7 +9,7 @@ use crate::models::{
     _entities::{
         boards,
         projects::{ActiveModel, Entity, Model},
-        todos,
+        todos, users_projects as up_entity,
     },
     users, users_projects,
 };
@@ -62,9 +62,29 @@ impl Params {
     }
 }
 
-async fn load_item(ctx: &AppContext, id: i32) -> Result<Model> {
-    let item = Entity::find_by_id(id).one(&ctx.db).await?;
-    item.ok_or_else(|| Error::NotFound)
+async fn load_item_by_pid(ctx: &AppContext, pid: &str) -> Result<Model> {
+    use crate::models::_entities::projects::Column as ProjectCol;
+    let uuid = uuid::Uuid::parse_str(pid).map_err(|_| Error::NotFound)?;
+    Entity::find()
+        .filter(ProjectCol::Pid.eq(uuid))
+        .one(&ctx.db)
+        .await?
+        .ok_or(Error::NotFound)
+}
+
+async fn require_owner(ctx: &AppContext, user_id: i32, project_id: i32) -> Result<()> {
+    let link = up_entity::Entity::find()
+        .filter(up_entity::Column::UserId.eq(user_id))
+        .filter(up_entity::Column::ProjectId.eq(project_id))
+        .one(&ctx.db)
+        .await?
+        .ok_or(Error::NotFound)?;
+    if link.role != "owner" {
+        return Err(Error::Unauthorized(
+            "Only project owners can do this".into(),
+        ));
+    }
+    Ok(())
 }
 
 #[debug_handler]
@@ -111,6 +131,7 @@ pub async fn add(
     let project_user = users_projects::ActiveModel {
         user_id: Set(user.id),
         project_id: Set(item.id),
+        role: Set("owner".to_string()),
         ..Default::default()
     };
 
@@ -126,26 +147,36 @@ pub async fn add(
 
 #[debug_handler]
 pub async fn update(
-    Path(id): Path<i32>,
+    auth: auth::JWT,
+    Path(pid): Path<String>,
     State(ctx): State<AppContext>,
     Json(params): Json<Params>,
 ) -> Result<Response> {
-    let item = load_item(&ctx, id).await?;
-    let mut item = item.into_active_model();
-    params.update(&mut item);
-    let item = item.update(&ctx.db).await?;
+    let user = users::Model::find_by_pid(&ctx.db, &auth.claims.pid).await?;
+    let item = load_item_by_pid(&ctx, &pid).await?;
+    require_owner(&ctx, user.id, item.id).await?;
+    let mut active = item.into_active_model();
+    params.update(&mut active);
+    let item = active.update(&ctx.db).await?;
     format::json(item)
 }
 
 #[debug_handler]
-pub async fn remove(Path(id): Path<i32>, State(ctx): State<AppContext>) -> Result<Response> {
-    load_item(&ctx, id).await?.delete(&ctx.db).await?;
+pub async fn remove(
+    auth: auth::JWT,
+    Path(pid): Path<String>,
+    State(ctx): State<AppContext>,
+) -> Result<Response> {
+    let user = users::Model::find_by_pid(&ctx.db, &auth.claims.pid).await?;
+    let item = load_item_by_pid(&ctx, &pid).await?;
+    require_owner(&ctx, user.id, item.id).await?;
+    item.delete(&ctx.db).await?;
     format::empty()
 }
 
 #[debug_handler]
-pub async fn get_one(Path(id): Path<i32>, State(ctx): State<AppContext>) -> Result<Response> {
-    format::json(load_item(&ctx, id).await?)
+pub async fn get_one(Path(pid): Path<String>, State(ctx): State<AppContext>) -> Result<Response> {
+    format::json(load_item_by_pid(&ctx, &pid).await?)
 }
 
 #[debug_handler]
@@ -256,8 +287,8 @@ pub fn routes() -> Routes {
         .add("stats", get(user_stats))
         .add("/", get(list_by_user))
         .add("/", post(add))
-        .add("{id}", get(get_one))
-        .add("{id}", delete(remove))
-        .add("{id}", put(update))
-        .add("{id}", patch(update))
+        .add("{pid}", get(get_one))
+        .add("{pid}", delete(remove))
+        .add("{pid}", put(update))
+        .add("{pid}", patch(update))
 }

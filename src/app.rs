@@ -53,6 +53,8 @@ impl Hooks for App {
             .add_route(controllers::todo::routes())
             .add_route(controllers::board::routes())
             .add_route(controllers::project::routes())
+            .add_route(controllers::members::routes())
+            .add_route(controllers::timer::routes())
             .add_route(controllers::auth::routes())
             .add_route(controllers::ws::routes())
     }

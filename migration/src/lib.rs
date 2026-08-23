@@ -14,6 +14,9 @@ mod m20260615_000002_add_locked_to_todos;
 mod m20260615_000003_add_parent_id_to_todos;
 mod m20260617_000001_comments;
 mod m20260617_000002_project_settings;
+mod m20260618_000001_project_roles;
+mod m20260618_000002_comments_user_id;
+mod m20260618_000003_time_entries;
 pub struct Migrator;
 
 #[async_trait::async_trait]
@@ -32,6 +35,9 @@ impl MigratorTrait for Migrator {
             Box::new(m20260615_000003_add_parent_id_to_todos::Migration),
             Box::new(m20260617_000001_comments::Migration),
             Box::new(m20260617_000002_project_settings::Migration),
+            Box::new(m20260618_000001_project_roles::Migration),
+            Box::new(m20260618_000002_comments_user_id::Migration),
+            Box::new(m20260618_000003_time_entries::Migration),
             // inject-above (do not remove this comment)
         ]
     }

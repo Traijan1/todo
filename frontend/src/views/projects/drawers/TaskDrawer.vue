@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, nextTick, computed } from "vue";
+import { ref, watch, nextTick, computed, onUnmounted } from "vue";
 import { storeToRefs } from "pinia";
 import type { Todo, SubtaskItem, Comment } from "../../../api/models";
 import TiptapEditor from "../../../components/editor/TiptapEditor.vue";
@@ -290,11 +290,80 @@ const submitComment = async () => {
   }
 };
 
+// ── Timer ─────────────────────────────────────────────────────────────────────
+interface TimerState {
+  running: boolean;
+  started_at: string | null;
+  total_seconds: number;
+  total_formatted: string;
+}
+
+const timer = ref<TimerState | null>(null);
+const timerActing = ref(false);
+const timerElapsed = ref(0); // live seconds since start
+let tickInterval: ReturnType<typeof setInterval> | null = null;
+
+const startTick = (startedAt: string) => {
+  if (tickInterval) clearInterval(tickInterval);
+  const base = new Date(startedAt).getTime();
+  const tick = () => {
+    timerElapsed.value = Math.floor((Date.now() - base) / 1000);
+  };
+  tick();
+  tickInterval = setInterval(tick, 1000);
+};
+
+const stopTick = () => {
+  if (tickInterval) { clearInterval(tickInterval); tickInterval = null; }
+};
+
+onUnmounted(stopTick);
+
+const formatSecs = (s: number) => {
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  const h = Math.floor(m / 60);
+  return h > 0 ? `${h}h ${m % 60}m` : `${m}m`;
+};
+
+const loadTimer = async (todoPid: string) => {
+  try {
+    const { data } = await api.get(`/todos/${todoPid}/timer`);
+    timer.value = data;
+    if (data.running && data.started_at) startTick(data.started_at);
+    else stopTick();
+  } catch { timer.value = null; }
+};
+
+const startTimer = async () => {
+  if (!props.todo || timerActing.value) return;
+  timerActing.value = true;
+  try {
+    await api.post(`/todos/${props.todo.pid}/timer/start`);
+    await loadTimer(props.todo.pid);
+  } finally { timerActing.value = false; }
+};
+
+const stopTimer = async () => {
+  if (!props.todo || timerActing.value) return;
+  timerActing.value = true;
+  try {
+    await api.post(`/todos/${props.todo.pid}/timer/stop`);
+    stopTick();
+    await loadTimer(props.todo.pid);
+  } finally { timerActing.value = false; }
+};
+
 watch(
   () => props.todo?.pid,
   (pid) => {
     comments.value = [];
-    if (pid) loadComments(pid);
+    stopTick();
+    timer.value = null;
+    if (pid) {
+      loadComments(pid);
+      loadTimer(pid);
+    }
   },
   { immediate: true },
 );
@@ -551,6 +620,37 @@ defineExpose({
     <div class="space-y-2">
       <label class="brand-label">Description</label>
       <TiptapEditor v-model="form.description" placeholder="Map out the steps..." />
+    </div>
+
+    <!-- Timer (only for existing todos) -->
+    <div v-if="todo && timer !== null" class="flex items-center gap-3 py-2.5 px-3 rounded-xl bg-white/5">
+      <!-- Time display -->
+      <div class="flex-1 min-w-0">
+        <p class="text-[9px] font-black uppercase tracking-widest text-brand-primary/40 mb-0.5">Zeit</p>
+        <p class="text-sm font-black tabular-nums text-brand-text">
+          <span v-if="timer.running" class="text-brand-primary">
+            {{ formatSecs(timer.total_seconds + timerElapsed) }}
+          </span>
+          <span v-else>{{ timer.total_formatted || '0m' }}</span>
+        </p>
+      </div>
+      <!-- Running indicator -->
+      <div v-if="timer.running" class="flex items-center gap-1.5 text-brand-primary">
+        <span class="w-1.5 h-1.5 rounded-full bg-brand-primary animate-pulse"/>
+        <span class="text-[9px] font-black uppercase tracking-widest">Läuft</span>
+      </div>
+      <!-- Start / Stop button -->
+      <button
+        type="button"
+        :disabled="timerActing"
+        class="shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all disabled:opacity-40"
+        :class="timer.running
+          ? 'bg-red-500/15 text-red-400 hover:bg-red-500/25'
+          : 'bg-brand-primary/15 text-brand-primary hover:bg-brand-primary/25'"
+        @click="timer.running ? stopTimer() : startTimer()"
+      >
+        {{ timerActing ? '...' : timer.running ? 'Stop' : 'Start' }}
+      </button>
     </div>
 
     <!-- Comments (only for existing todos) -->

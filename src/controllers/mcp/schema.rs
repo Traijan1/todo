@@ -296,6 +296,40 @@ pub fn get_tools_list() -> Value {
                 },
                 "required": ["todo_pid", "content"]
             }
+        },
+        // ── Time Tracking ─────────────────────────────────────────────────
+        {
+            "name": "start_timer",
+            "description": "Start a time tracking session for a todo. Fails if a timer is already running for that todo.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "todo_pid": { "type": "string", "description": "UUID (PID) of the todo" }
+                },
+                "required": ["todo_pid"]
+            }
+        },
+        {
+            "name": "stop_timer",
+            "description": "Stop the currently running timer for a todo. Returns the elapsed time.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "todo_pid": { "type": "string", "description": "UUID (PID) of the todo" }
+                },
+                "required": ["todo_pid"]
+            }
+        },
+        {
+            "name": "get_time",
+            "description": "Get all time tracking entries for a todo, including total time spent.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "todo_pid": { "type": "string", "description": "UUID (PID) of the todo" }
+                },
+                "required": ["todo_pid"]
+            }
         }
     ])
 }

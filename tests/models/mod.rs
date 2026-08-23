@@ -1,6 +1,6 @@
 mod users;
 
-mod projects;
 mod boards;
-mod todos;
+mod projects;
 mod tags;
+mod todos;

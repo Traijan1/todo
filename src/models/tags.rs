@@ -61,7 +61,15 @@ impl Model {
         {
             return Ok(tag);
         }
-        Self::create(db, &TagParams { title: title.to_string(), color: None, project_id }).await
+        Self::create(
+            db,
+            &TagParams {
+                title: title.to_string(),
+                color: None,
+                project_id,
+            },
+        )
+        .await
     }
 
     pub async fn create<C>(db: &C, params: &TagParams) -> ModelResult<Self>

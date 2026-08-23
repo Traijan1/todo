@@ -1,6 +1,6 @@
-use todo::app::App;
 use loco_rs::testing::prelude::*;
 use serial_test::serial;
+use todo::app::App;
 
 macro_rules! configure_insta {
     ($($expr:expr),*) => {

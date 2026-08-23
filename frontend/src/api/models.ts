@@ -41,6 +41,13 @@ export interface Todo {
   tags?: Tag[];
 }
 
+export interface Member {
+  pid: string;
+  name: string;
+  email: string;
+  role: "owner" | "member";
+}
+
 export interface Comment {
   pid: string;
   author: string;

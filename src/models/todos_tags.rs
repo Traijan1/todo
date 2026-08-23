@@ -1,5 +1,5 @@
+pub use super::_entities::todos_tags::{ActiveModel, Entity, Model};
 use sea_orm::entity::prelude::*;
-pub use super::_entities::todos_tags::{ActiveModel, Model, Entity};
 pub type TodosTags = Entity;
 
 #[async_trait::async_trait]

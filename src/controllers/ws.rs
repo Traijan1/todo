@@ -69,8 +69,8 @@ pub async fn sse_events_handler() -> Sse<impl Stream<Item = Result<Event, Infall
         }
     });
 
-    let stream = ReceiverStream::new(mpsc_rx)
-        .map(|text| Ok(Event::default().event("message").data(text)));
+    let stream =
+        ReceiverStream::new(mpsc_rx).map(|text| Ok(Event::default().event("message").data(text)));
 
     Sse::new(stream).keep_alive(axum::response::sse::KeepAlive::default())
 }

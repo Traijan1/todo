@@ -8,18 +8,24 @@ const props = defineProps<{
   board: Board;
   filterTags?: string[];
   filterSearch?: string;
+  open?: boolean;
 }>();
 
 const emit = defineEmits<{
   "update:todos": [value: Todo[]];
   "edit-board": [];
+  "toggle": [];
   "create-task": [];
   "edit-task": [todo: Todo];
   "delete-task": [todo: Todo];
   change: [event: any];
 }>();
 
-const isOpen = ref(true);
+const internalOpen = ref(true);
+const isOpen = computed({
+  get: () => props.open ?? internalOpen.value,
+  set: (v) => { internalOpen.value = v; },
+});
 
 const localTodos = computed({
   get: () => props.board.todos,
@@ -44,7 +50,7 @@ const isFiltering = computed(() =>
 <template>
   <section class="flex flex-col bg-brand-container/40 backdrop-blur-md rounded-2xl w-full border border-brand-primary/10 shadow-sm overflow-hidden transition-all duration-300" :class="{ 'pb-4': isOpen }" @click.stop>
     <!-- Board Header -->
-    <div class="flex mb-4 justify-between items-center p-3 px-5 shrink-0 cursor-pointer hover:bg-white/5 transition-colors" @click="isOpen = !isOpen">
+    <div class="flex mb-4 justify-between items-center p-3 px-5 shrink-0 cursor-pointer hover:bg-white/5 transition-colors" @click="emit('toggle'); isOpen = !isOpen">
       <div class="flex items-center gap-3">
         <div class="w-6 h-6 flex items-center justify-center rounded-lg bg-brand-primary/10 text-brand-primary transition-transform duration-300" :class="{ 'rotate-180': !isOpen }">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">

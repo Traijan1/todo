@@ -17,6 +17,7 @@ pub struct Model {
     #[sea_orm(column_type = "Text")]
     pub content: String,
     pub is_ai: bool,
+    pub user_id: Option<i32>, // FK→users, null for AI comments
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

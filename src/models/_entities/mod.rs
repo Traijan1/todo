@@ -6,6 +6,7 @@ pub mod boards;
 pub mod comments;
 pub mod projects;
 pub mod tags;
+pub mod time_entries;
 pub mod todos;
 pub mod todos_tags;
 pub mod users;

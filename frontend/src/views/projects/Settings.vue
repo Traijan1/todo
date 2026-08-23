@@ -2,10 +2,14 @@
 import { ref, onMounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import { useProjectStore } from "../../stores/projects";
+import { useAuthStore } from "../../stores/auth";
+import { storeToRefs } from "pinia";
+import type { Member } from "../../api/models";
 
 const props = defineProps<{ pid: string }>();
 const router = useRouter();
 const projectStore = useProjectStore();
+const { user } = storeToRefs(useAuthStore());
 
 const project = computed(() => projectStore.projects.find((p) => p.pid === props.pid));
 
@@ -13,6 +17,16 @@ const form = ref({ title: "", description: "", mcp_expose_comments: true });
 const saving = ref(false);
 const saved = ref(false);
 const deleting = ref(false);
+
+// Members
+const members = ref<Member[]>([]);
+const newMemberEmail = ref("");
+const addingMember = ref(false);
+const memberError = ref("");
+
+const isOwner = computed(() =>
+  members.value.some((m) => m.pid === user.value?.pid && m.role === "owner")
+);
 
 onMounted(async () => {
   if (!project.value) await projectStore.fetchProjects();
@@ -23,7 +37,28 @@ onMounted(async () => {
       mcp_expose_comments: project.value.mcp_expose_comments ?? true,
     };
   }
+  members.value = await projectStore.fetchMembers(props.pid);
 });
+
+const addMember = async () => {
+  if (!newMemberEmail.value.trim()) return;
+  addingMember.value = true;
+  memberError.value = "";
+  try {
+    const m = await projectStore.addMember(props.pid, newMemberEmail.value.trim());
+    members.value.push(m);
+    newMemberEmail.value = "";
+  } catch (e: any) {
+    memberError.value = e.response?.data?.description || e.response?.data?.error || "Fehler";
+  } finally {
+    addingMember.value = false;
+  }
+};
+
+const removeMember = async (m: Member) => {
+  await projectStore.removeMember(props.pid, m.pid);
+  members.value = members.value.filter((x) => x.pid !== m.pid);
+};
 
 const save = async () => {
   if (!form.value.title.trim()) return;
@@ -131,6 +166,62 @@ const confirmDelete = async () => {
         </svg>
         {{ saved ? "Gespeichert!" : saving ? "Speichern..." : "Änderungen speichern" }}
       </button>
+
+      <!-- Members -->
+      <section class="p-5 rounded-2xl bg-brand-container border border-brand-primary/10 space-y-4">
+        <p class="text-[9px] font-black uppercase tracking-widest text-brand-primary/40">Mitglieder</p>
+
+        <!-- Member list -->
+        <div class="space-y-2">
+          <div
+            v-for="m in members"
+            :key="m.pid"
+            class="flex items-center gap-3 py-2 px-3 rounded-xl bg-white/5"
+          >
+            <div class="w-7 h-7 rounded-full bg-brand-primary/20 flex items-center justify-center text-[10px] font-black text-brand-primary shrink-0">
+              {{ m.name[0]?.toUpperCase() }}
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-xs font-bold text-brand-text truncate">{{ m.name }}</p>
+              <p class="text-[10px] text-brand-text-muted/40 truncate">{{ m.email }}</p>
+            </div>
+            <span
+              class="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full shrink-0"
+              :class="m.role === 'owner' ? 'bg-brand-primary/15 text-brand-primary' : 'bg-white/10 text-brand-text-muted/60'"
+            >{{ m.role === 'owner' ? 'Owner' : 'Mitglied' }}</span>
+            <button
+              v-if="isOwner && m.pid !== user?.pid"
+              class="text-brand-text-muted/20 hover:text-red-400 transition-all"
+              title="Entfernen"
+              @click="removeMember(m)"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Add member (owner only) -->
+        <div v-if="isOwner" class="space-y-2">
+          <div class="flex gap-2">
+            <input
+              v-model="newMemberEmail"
+              type="email"
+              class="brand-input flex-1 text-xs"
+              placeholder="E-Mail-Adresse"
+              @keydown.enter.prevent="addMember"
+            />
+            <button
+              type="button"
+              :disabled="addingMember || !newMemberEmail.trim()"
+              class="px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest bg-brand-primary/20 text-brand-primary hover:bg-brand-primary/30 transition-all disabled:opacity-30 shrink-0"
+              @click="addMember"
+            >{{ addingMember ? '...' : 'Einladen' }}</button>
+          </div>
+          <p v-if="memberError" class="text-[10px] text-red-400">{{ memberError }}</p>
+        </div>
+      </section>
 
       <!-- Danger Zone -->
       <section class="p-5 rounded-2xl border border-red-500/15 bg-red-500/5 space-y-3">

@@ -1,11 +1,11 @@
 use crate::models::{
     _entities::{
-        boards as boards_entity, projects, tags as tags_entity, todos as todos_entity, users,
-        users_projects,
+        boards as boards_entity, projects, tags as tags_entity, time_entries as te_entity,
+        todos as todos_entity, users, users_projects,
     },
     boards::{self, BoardParams},
-    comments as comments_model,
-    tags as tags_model,
+    comments as comments_model, tags as tags_model,
+    time_entries::{self as time_entries_model, format_duration},
     todos::{self, TodoParams},
 };
 
@@ -221,7 +221,9 @@ pub async fn reorder_boards(ctx: &AppContext, args: &Value) -> Result<Value> {
     let mut project_id: Option<i32> = None;
     for (index, pid) in board_pids.iter().enumerate() {
         let board = boards::Model::find_by_pid(&ctx.db, pid).await?;
-        if project_id.is_none() { project_id = Some(board.project_id); }
+        if project_id.is_none() {
+            project_id = Some(board.project_id);
+        }
         let mut active = board.into_active_model();
         active.position = Set(index as i32);
         active.update(&ctx.db).await?;
@@ -249,7 +251,9 @@ pub async fn reorder_todos(ctx: &AppContext, args: &Value) -> Result<Value> {
     let mut board_id: Option<i32> = None;
     for (index, pid) in todo_pids.iter().enumerate() {
         let todo = todos::Model::find_by_pid(&ctx.db, pid).await?;
-        if board_id.is_none() { board_id = Some(todo.board_id); }
+        if board_id.is_none() {
+            board_id = Some(todo.board_id);
+        }
         let mut active = todo.into_active_model();
         active.position = Set(index as i32);
         active.update(&ctx.db).await?;
@@ -609,7 +613,9 @@ pub async fn get_comments(ctx: &AppContext, args: &Value) -> Result<Value> {
 
     let project = project_for_board(ctx, todo.board_id).await?;
     if !project.mcp_expose_comments {
-        return Ok(json!({ "content": [{ "type": "text", "text": "Comments are disabled for MCP access on this project." }] }));
+        return Ok(
+            json!({ "content": [{ "type": "text", "text": "Comments are disabled for MCP access on this project." }] }),
+        );
     }
 
     let comments = comments_model::Model::find_by_todo_id(&ctx.db, todo.id).await?;
@@ -631,12 +637,16 @@ pub async fn add_comment(ctx: &AppContext, args: &Value, user: &users::Model) ->
     let todo = todos::Model::find_by_pid(&ctx.db, todo_pid).await?;
 
     if todo.locked {
-        return Ok(json!({ "content": [{ "type": "text", "text": "Error: This todo is locked and invisible to AI." }] }));
+        return Ok(
+            json!({ "content": [{ "type": "text", "text": "Error: This todo is locked and invisible to AI." }] }),
+        );
     }
 
     let project = project_for_board(ctx, todo.board_id).await?;
     if !project.mcp_expose_comments {
-        return Ok(json!({ "content": [{ "type": "text", "text": "Error: Comments are disabled for MCP access on this project." }] }));
+        return Ok(
+            json!({ "content": [{ "type": "text", "text": "Error: Comments are disabled for MCP access on this project." }] }),
+        );
     }
 
     let comment = comments_model::Model::create(
@@ -646,6 +656,7 @@ pub async fn add_comment(ctx: &AppContext, args: &Value, user: &users::Model) ->
             author: user.name.clone(),
             content: content.to_string(),
             is_ai: true,
+            user_id: None, // AI comment — no user FK
         },
     )
     .await?;
@@ -671,5 +682,105 @@ pub async fn remove_tag_from_todo(ctx: &AppContext, args: &Value) -> Result<Valu
 
     Ok(json!({
         "content": [{ "type": "text", "text": format!("Tag '{}' removed from todo '{}'", tag.title, todo.title) }]
+    }))
+}
+
+// ── Timer Actions ─────────────────────────────────────────────────────────────
+
+pub async fn start_timer(ctx: &AppContext, args: &Value, _user: &users::Model) -> Result<Value> {
+    let todo_pid = args
+        .get("todo_pid")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| Error::BadRequest("todo_pid required".into()))?;
+    let todo = todos::Model::find_by_pid(&ctx.db, todo_pid).await?;
+    if todo.locked {
+        return Err(Error::NotFound);
+    }
+
+    if time_entries_model::Model::find_active_for_todo(&ctx.db, todo.id)
+        .await?
+        .is_some()
+    {
+        return Err(Error::BadRequest(
+            "A timer is already running for this todo".into(),
+        ));
+    }
+
+    te_entity::Entity::start(&ctx.db, todo.id, None, true).await?;
+
+    Ok(json!({
+        "content": [{ "type": "text", "text": format!("Timer started for '{}'", todo.title) }]
+    }))
+}
+
+pub async fn stop_timer(ctx: &AppContext, args: &Value, _user: &users::Model) -> Result<Value> {
+    let todo_pid = args
+        .get("todo_pid")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| Error::BadRequest("todo_pid required".into()))?;
+    let todo = todos::Model::find_by_pid(&ctx.db, todo_pid).await?;
+    if todo.locked {
+        return Err(Error::NotFound);
+    }
+
+    let entry = time_entries_model::Model::find_active_for_todo(&ctx.db, todo.id)
+        .await?
+        .ok_or_else(|| Error::BadRequest("No running timer for this todo".into()))?;
+
+    let mut active: time_entries_model::ActiveModel = entry.into();
+    active.stopped_at = sea_orm::ActiveValue::Set(Some(chrono::Utc::now().into()));
+    let saved = active.update(&ctx.db).await?;
+
+    let elapsed = (saved.stopped_at.unwrap().timestamp() - saved.started_at.timestamp()).max(0);
+    let duration = format_duration(elapsed);
+
+    Ok(json!({
+        "content": [{ "type": "text", "text": format!("Timer stopped for '{}'. Elapsed: {}", todo.title, duration) }]
+    }))
+}
+
+pub async fn get_time(ctx: &AppContext, args: &Value) -> Result<Value> {
+    let todo_pid = args
+        .get("todo_pid")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| Error::BadRequest("todo_pid required".into()))?;
+    let todo = todos::Model::find_by_pid(&ctx.db, todo_pid).await?;
+    if todo.locked {
+        return Err(Error::NotFound);
+    }
+
+    let entries = time_entries_model::Model::find_all_for_todo(&ctx.db, todo.id).await?;
+    let total_secs = time_entries_model::Model::total_seconds(&entries);
+    let total = format_duration(total_secs);
+
+    let running = entries.iter().any(|e| e.stopped_at.is_none());
+    let completed: Vec<_> = entries
+        .iter()
+        .filter(|e| e.stopped_at.is_some())
+        .map(|e| {
+            let secs = (e.stopped_at.unwrap().timestamp() - e.started_at.timestamp()).max(0);
+            json!({
+                "started_at": e.started_at.to_rfc3339(),
+                "stopped_at": e.stopped_at.map(|t| t.to_rfc3339()),
+                "duration": format_duration(secs),
+                "is_ai": e.is_ai,
+            })
+        })
+        .collect();
+
+    Ok(json!({
+        "content": [{
+            "type": "text",
+            "text": format!("Time tracking for '{}': total {}{}\n{} completed session(s)",
+                todo.title,
+                total,
+                if running { " (timer running)" } else { "" },
+                completed.len()
+            )
+        }],
+        "entries": completed,
+        "total_seconds": total_secs,
+        "total_formatted": total,
+        "timer_running": running,
     }))
 }

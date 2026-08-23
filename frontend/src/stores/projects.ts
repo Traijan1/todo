@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import api from "../api/client";
-import type { Project } from "../api/models";
+import type { Project, Member } from "../api/models";
 
 export const useProjectStore = defineStore("projects", () => {
   const projects = ref<Project[]>([]);
@@ -64,6 +64,20 @@ export const useProjectStore = defineStore("projects", () => {
     projects.value = projects.value.filter((p) => p.pid !== pid);
   }
 
+  async function fetchMembers(projectPid: string): Promise<Member[]> {
+    const { data } = await api.get(`/projects/${projectPid}/members`);
+    return data;
+  }
+
+  async function addMember(projectPid: string, email: string): Promise<Member> {
+    const { data } = await api.post(`/projects/${projectPid}/members`, { email });
+    return data;
+  }
+
+  async function removeMember(projectPid: string, userPid: string): Promise<void> {
+    await api.delete(`/projects/${projectPid}/members/${userPid}`);
+  }
+
   return {
     projects,
     currentProject,
@@ -74,5 +88,8 @@ export const useProjectStore = defineStore("projects", () => {
     fetchProjectByPid,
     updateProject,
     deleteProject,
+    fetchMembers,
+    addMember,
+    removeMember,
   };
 });
