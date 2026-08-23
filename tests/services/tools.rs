@@ -4,7 +4,7 @@ use serial_test::serial;
 use todo::{
     app::App,
     models::{_entities::boards as boards_entity, boards, projects, todos, users, users_projects},
-    services::tools::{execute, execute_with_context, ToolContext},
+    services::tools::{execute, execute_with_context, validate_context, ToolContext},
 };
 
 async fn create_project(
@@ -85,6 +85,31 @@ async fn shared_tools_apply_context_and_enforce_project_boundaries() {
     execute_with_context(ctx, &owner, "get_todo", &serde_json::json!({}), &selected)
         .await
         .unwrap();
+
+    let (expanded, selected_project) = validate_context(
+        ctx,
+        &owner,
+        &ToolContext {
+            todo_pid: Some(todo.pid.to_string()),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(expanded.board_pid, Some(board.pid.to_string()));
+    assert_eq!(expanded.project_pid, Some(project.pid.to_string()));
+    assert_eq!(selected_project.unwrap().id, project.id);
+
+    let result = validate_context(
+        ctx,
+        &outsider,
+        &ToolContext {
+            todo_pid: Some(todo.pid.to_string()),
+            ..Default::default()
+        },
+    )
+    .await;
+    assert!(matches!(result, Err(Error::Unauthorized(_))));
 
     let result = execute(
         ctx,

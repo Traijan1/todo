@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import AiChatWidget from "./components/AiChatWidget.vue";
 import { useAiContextStore } from "./stores/aiContext";
 import { useAuthStore } from "./stores/auth";
 import { useProjectStore } from "./stores/projects";
@@ -204,6 +205,8 @@ watch(
     >
       <router-view />
     </main>
+
+    <AiChatWidget v-if="!isAuthPage && auth.isAuthenticated" />
   </div>
 </template>
 

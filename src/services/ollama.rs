@@ -163,3 +163,88 @@ pub async fn generate(
             .and_then(serde_json::Value::as_u64),
     })
 }
+
+#[derive(Debug)]
+pub struct AdapterChatResult {
+    pub model: String,
+    pub message: serde_json::Value,
+    pub eval_count: Option<u64>,
+    pub total_duration: Option<u64>,
+}
+
+pub async fn chat(
+    base_url: &str,
+    model: String,
+    messages: &[serde_json::Value],
+    tools: &serde_json::Value,
+) -> Result<AdapterChatResult> {
+    let clean_url = base_url.trim().trim_end_matches('/');
+    if clean_url.is_empty() {
+        return Err(Error::BadRequest("Ollama URL is not configured".into()));
+    }
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(120))
+        .build()
+        .map_err(|_| Error::InternalServerError)?;
+    let mut body = serde_json::json!({
+        "model": model,
+        "messages": messages,
+        "tools": tools,
+        "stream": false,
+        "think": true,
+    });
+    let url = format!("{clean_url}/api/chat");
+    let mut response = client
+        .post(&url)
+        .json(&body)
+        .send()
+        .await
+        .map_err(|error| Error::BadRequest(format!("Failed to reach Ollama provider: {error}")))?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let error_text = response.text().await.unwrap_or_default();
+        if error_text.to_lowercase().contains("think") {
+            body.as_object_mut().map(|object| object.remove("think"));
+            response = client
+                .post(&url)
+                .json(&body)
+                .send()
+                .await
+                .map_err(|error| {
+                    Error::BadRequest(format!("Failed to reach Ollama provider: {error}"))
+                })?;
+        } else {
+            return Err(Error::BadRequest(format!(
+                "Ollama returned {status}: {error_text}"
+            )));
+        }
+    }
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let error_text = response.text().await.unwrap_or_default();
+        return Err(Error::BadRequest(format!(
+            "Ollama returned {status}: {error_text}"
+        )));
+    }
+
+    let json: serde_json::Value = response
+        .json()
+        .await
+        .map_err(|error| Error::BadRequest(format!("Failed to parse Ollama response: {error}")))?;
+    let message = json
+        .get("message")
+        .cloned()
+        .ok_or_else(|| Error::BadRequest("Ollama returned no chat message".into()))?;
+
+    Ok(AdapterChatResult {
+        model,
+        message,
+        eval_count: json.get("eval_count").and_then(serde_json::Value::as_u64),
+        total_duration: json
+            .get("total_duration")
+            .and_then(serde_json::Value::as_u64),
+    })
+}

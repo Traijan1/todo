@@ -43,6 +43,41 @@ pub fn ollama_definitions() -> Value {
     Value::Array(tools)
 }
 
+/// Ollama receives the same canonical tool definitions as MCP. IDs already
+/// supplied by the UI context are removed from JSON Schema's `required` list,
+/// because `execute_with_context` fills them server-side.
+pub fn ollama_definitions_for_context(context: &ToolContext) -> Value {
+    let mut tools = ollama_definitions();
+    let supplied = [
+        ("project_pid", context.project_pid.is_some()),
+        ("board_pid", context.board_pid.is_some()),
+        ("todo_pid", context.todo_pid.is_some()),
+    ];
+
+    if let Some(definitions) = tools.as_array_mut() {
+        for definition in definitions {
+            let Some(parameters) = definition
+                .get_mut("function")
+                .and_then(|function| function.get_mut("parameters"))
+                .and_then(Value::as_object_mut)
+            else {
+                continue;
+            };
+            let Some(required) = parameters.get_mut("required").and_then(Value::as_array_mut)
+            else {
+                continue;
+            };
+            required.retain(|field| {
+                !supplied.iter().any(|(name, is_supplied)| {
+                    *is_supplied && field.as_str().is_some_and(|field| field == *name)
+                })
+            });
+        }
+    }
+
+    tools
+}
+
 pub fn is_known_tool(name: &str) -> bool {
     definitions().as_array().is_some_and(|tools| {
         tools
@@ -73,6 +108,84 @@ pub async fn execute_with_context(
 ) -> Result<Value> {
     let args = apply_context(args, tool_context)?;
     execute(ctx, user, name, &args).await
+}
+
+/// Authorize the selected UI context and fill its missing ancestors. This
+/// gives chat agents one consistent, verified project/board/todo hierarchy.
+pub async fn validate_context(
+    ctx: &AppContext,
+    user: &users::Model,
+    context: &ToolContext,
+) -> Result<(ToolContext, Option<projects::Model>)> {
+    let requested_project = context.project_pid.as_deref();
+    let requested_board = context.board_pid.as_deref();
+
+    if let Some(todo_pid) = context.todo_pid.as_deref() {
+        let (todo, board) = todo_access(ctx, user, todo_pid).await?;
+        let project = projects::Entity::find_by_id(board.project_id)
+            .one(&ctx.db)
+            .await?
+            .ok_or(Error::NotFound)?;
+        ensure_context_matches(requested_project, requested_board, &project, &board)?;
+        return Ok((
+            ToolContext {
+                project_pid: Some(project.pid.to_string()),
+                board_pid: Some(board.pid.to_string()),
+                todo_pid: Some(todo.pid.to_string()),
+            },
+            Some(project),
+        ));
+    }
+
+    if let Some(board_pid) = requested_board {
+        let board = board_access(ctx, user, board_pid).await?;
+        let project = projects::Entity::find_by_id(board.project_id)
+            .one(&ctx.db)
+            .await?
+            .ok_or(Error::NotFound)?;
+        ensure_context_matches(requested_project, None, &project, &board)?;
+        return Ok((
+            ToolContext {
+                project_pid: Some(project.pid.to_string()),
+                board_pid: Some(board.pid.to_string()),
+                todo_pid: None,
+            },
+            Some(project),
+        ));
+    }
+
+    if let Some(project_pid) = requested_project {
+        let project = project_access(ctx, user, project_pid, false).await?;
+        return Ok((
+            ToolContext {
+                project_pid: Some(project.pid.to_string()),
+                board_pid: None,
+                todo_pid: None,
+            },
+            Some(project),
+        ));
+    }
+
+    Ok((ToolContext::default(), None))
+}
+
+fn ensure_context_matches(
+    requested_project: Option<&str>,
+    requested_board: Option<&str>,
+    project: &projects::Model,
+    board: &boards::Model,
+) -> Result<()> {
+    if requested_project.is_some_and(|pid| pid != project.pid.to_string()) {
+        return Err(Error::BadRequest(
+            "Selected project, board and todo do not belong together".into(),
+        ));
+    }
+    if requested_board.is_some_and(|pid| pid != board.pid.to_string()) {
+        return Err(Error::BadRequest(
+            "Selected project, board and todo do not belong together".into(),
+        ));
+    }
+    Ok(())
 }
 
 fn apply_context(args: &Value, context: &ToolContext) -> Result<Value> {
@@ -369,5 +482,32 @@ mod tests {
                 && tool["function"]["name"].is_string()
                 && tool["function"]["parameters"].is_object()
         }));
+    }
+
+    #[test]
+    fn removes_context_ids_from_ollama_required_fields() {
+        let tools = ollama_definitions_for_context(&ToolContext {
+            project_pid: Some("project-context".into()),
+            board_pid: None,
+            todo_pid: Some("todo-context".into()),
+        });
+        let definitions = tools.as_array().unwrap();
+        let get_todo = definitions
+            .iter()
+            .find(|tool| tool["function"]["name"] == "get_todo")
+            .unwrap();
+        let get_boards = definitions
+            .iter()
+            .find(|tool| tool["function"]["name"] == "get_boards")
+            .unwrap();
+
+        assert!(!get_todo["function"]["parameters"]["required"]
+            .as_array()
+            .unwrap()
+            .contains(&json!("todo_pid")));
+        assert!(!get_boards["function"]["parameters"]["required"]
+            .as_array()
+            .unwrap()
+            .contains(&json!("project_pid")));
     }
 }

@@ -52,6 +52,7 @@ impl Hooks for App {
             .add_route(controllers::mcp::routes())
             .add_route(controllers::todo::routes())
             .add_route(controllers::board::routes())
+            .add_route(controllers::chat::routes())
             .add_route(controllers::project::routes())
             .add_route(controllers::members::routes())
             .add_route(controllers::timer::routes())
