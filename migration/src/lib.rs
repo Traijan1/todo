@@ -20,6 +20,7 @@ mod m20260618_000003_time_entries;
 mod m20260823_000001_projects_ai;
 mod m20260823_000002_user_settings;
 mod m20260823_000003_rename_ai_system_prompt;
+mod m20260823_000004_remove_user_ai_settings;
 pub struct Migrator;
 
 #[async_trait::async_trait]
@@ -44,6 +45,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260823_000001_projects_ai::Migration),
             Box::new(m20260823_000002_user_settings::Migration),
             Box::new(m20260823_000003_rename_ai_system_prompt::Migration),
+            Box::new(m20260823_000004_remove_user_ai_settings::Migration),
             // inject-above (do not remove this comment)
         ]
     }

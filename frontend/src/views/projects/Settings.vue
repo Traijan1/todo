@@ -42,38 +42,50 @@ const testingProjectAi = ref(false);
 const projectAiTestResult = ref<AiTestResult | null>(null);
 const projectAiTestError = ref("");
 
+const providerModels = computed(() => settingsStore.modelsFor(form.value.ai_provider));
+
 const isOwner = computed(() =>
   members.value.some((m) => m.pid === user.value?.pid && m.role === "owner")
 );
 
 onMounted(async () => {
-  if (!project.value) await projectStore.fetchProjects();
+  const [, aiSettings] = await Promise.all([
+    project.value ? Promise.resolve() : projectStore.fetchProjects(),
+    settingsStore.fetchSettings(),
+  ]);
   if (project.value) {
     form.value = {
       title: project.value.title,
       description: project.value.description ?? "",
       mcp_expose_comments: project.value.mcp_expose_comments ?? true,
-      ai_provider: project.value.ai_provider ?? "ollama",
+      ai_provider: project.value.ai_provider ?? aiSettings?.default_provider ?? "",
       ai_model: project.value.ai_model ?? "",
       ai_system_prompt: project.value.ai_system_prompt ?? "",
     };
   }
   members.value = await projectStore.fetchMembers(props.pid);
 
-  // Fetch Ollama models for dropdown if not already loaded
-  if (settingsStore.models.length === 0) {
-    const settings = await settingsStore.fetchSettings();
-    if (settings?.ollama_url?.trim()) {
-      settingsStore.fetchOllamaModels().catch(() => {});
+  if (form.value.ai_provider) {
+    settingsStore.activateProvider(form.value.ai_provider);
+    if (providerModels.value.length === 0) {
+      settingsStore.fetchModels(form.value.ai_provider).catch(() => {});
     }
   }
 });
 
 const refreshModels = async () => {
-  if (!settingsStore.settings.ollama_url.trim()) return;
+  if (!form.value.ai_provider) return;
   try {
-    await settingsStore.fetchOllamaModels();
+    await settingsStore.fetchModels(form.value.ai_provider);
   } catch {}
+};
+
+const changeProvider = () => {
+  form.value.ai_model = "";
+  projectAiTestResult.value = null;
+  projectAiTestError.value = "";
+  settingsStore.activateProvider(form.value.ai_provider);
+  refreshModels();
 };
 
 const addMember = async () => {
@@ -124,6 +136,7 @@ const runProjectAiTest = async () => {
   try {
     const res = await projectStore.testProjectAi(props.pid, {
       prompt: testPromptText.value.trim(),
+      provider: form.value.ai_provider,
       model: form.value.ai_model.trim() || undefined,
       system_prompt: form.value.ai_system_prompt.trim() || undefined,
     });
@@ -199,17 +212,25 @@ const confirmDelete = async () => {
           <RouterLink
             to="/settings"
             class="text-[10px] text-brand-primary hover:underline font-bold tracking-wider uppercase shrink-0"
-            title="Zu den globalen Ollama-Einstellungen"
+            title="Zu den globalen AI-Provider-Einstellungen"
           >
-            Ollama Setup →
+            Provider Setup →
           </RouterLink>
         </div>
 
         <!-- AI Provider -->
         <div class="space-y-1.5">
           <label class="brand-label">AI Provider</label>
-          <select v-model="form.ai_provider" class="brand-input text-xs">
-            <option value="ollama">Ollama (Lokal / Lokales Netzwerk)</option>
+          <select v-model="form.ai_provider" class="brand-input text-xs" @change="changeProvider">
+            <option v-for="provider in settingsStore.settings.providers" :key="provider.id" :value="provider.id">
+              {{ provider.name }} · {{ provider.kind }}
+            </option>
+            <option
+              v-if="form.ai_provider && !settingsStore.settings.providers.some((provider) => provider.id === form.ai_provider)"
+              :value="form.ai_provider"
+            >
+              {{ form.ai_provider }} (nicht mehr konfiguriert)
+            </option>
           </select>
         </div>
 
@@ -220,7 +241,7 @@ const confirmDelete = async () => {
             <button
               type="button"
               class="text-[10px] text-brand-primary/60 hover:text-brand-primary flex items-center gap-1 font-mono transition-colors"
-              :disabled="settingsStore.testingConnection || !settingsStore.settings.ollama_url.trim()"
+              :disabled="settingsStore.testingConnection || !form.ai_provider"
               @click="refreshModels"
             >
               <svg class="w-3 h-3" :class="{ 'animate-spin': settingsStore.testingConnection }" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -233,23 +254,23 @@ const confirmDelete = async () => {
           <select
             v-model="form.ai_model"
             class="brand-input text-xs font-mono"
-            :disabled="settingsStore.models.length === 0"
+            :disabled="providerModels.length === 0"
           >
             <option value="">
-              {{ settingsStore.models.length ? '-- Standardmodell / Keines --' : '-- Keine Modelle verfügbar --' }}
+              {{ providerModels.length ? '-- Provider-Standardmodell --' : '-- Keine Modelle verfügbar --' }}
             </option>
             <option
-              v-if="form.ai_model && !settingsStore.models.some((m) => m.name === form.ai_model)"
+              v-if="form.ai_model && !providerModels.some((model) => model.id === form.ai_model)"
               :value="form.ai_model"
             >
               {{ form.ai_model }} (nicht auf dem Server gefunden)
             </option>
-            <option v-for="m in settingsStore.models" :key="m.name" :value="m.name">
-              {{ m.name }} {{ m.details?.parameter_size ? `(${m.details.parameter_size})` : '' }}
+            <option v-for="model in providerModels" :key="model.id" :value="model.id">
+              {{ model.name }} {{ model.details?.parameter_size ? `(${model.details.parameter_size})` : '' }}
             </option>
           </select>
           <p class="text-[11px] text-brand-text-muted/40">
-            Wenn leer gelassen, wird das globale Standardmodell oder llama3.2 genutzt.
+            Wenn leer gelassen, wird das in YAML konfigurierte Standardmodell dieses Providers verwendet.
           </p>
         </div>
 
@@ -326,6 +347,7 @@ const confirmDelete = async () => {
               v-if="projectAiTestResult"
               :response="projectAiTestResult.response"
               :thinking="projectAiTestResult.thinking"
+              :provider="projectAiTestResult.provider_id"
               :model="projectAiTestResult.model"
               :duration-ms="projectAiTestResult.duration_ms"
               title="AI-Testergebnis"

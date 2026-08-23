@@ -17,16 +17,21 @@ export interface Project {
   updated_at: string;
 }
 
-export interface UserSettings {
-  id?: number;
-  user_id?: number;
-  ollama_url: string;
+export interface AiProvider {
+  id: string;
+  name: string;
+  kind: string;
   default_model?: string;
 }
 
-export interface OllamaModel {
+export interface AiSettings {
+  default_provider: string;
+  providers: AiProvider[];
+}
+
+export interface AiModel {
+  id: string;
   name: string;
-  model: string;
   size?: number;
   details?: {
     family?: string;
@@ -37,6 +42,7 @@ export interface OllamaModel {
 
 export interface AiTestResult {
   ok: boolean;
+  provider_id: string;
   model: string;
   response: string;
   thinking?: string;

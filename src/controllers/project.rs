@@ -144,6 +144,14 @@ pub async fn add(
 ) -> Result<Response> {
     //ValidatorTrait::validate(&params)?;
 
+    if let Some(provider_id) = params
+        .ai_provider
+        .as_deref()
+        .filter(|id| !id.trim().is_empty())
+    {
+        crate::services::ai::AiConfig::from_context(&ctx)?.provider(provider_id)?;
+    }
+
     let user = users::Model::find_by_pid(&ctx.db, &auth.claims.pid)
         .await
         .map_err(|e| {
@@ -189,6 +197,13 @@ pub async fn update(
     State(ctx): State<AppContext>,
     Json(params): Json<Params>,
 ) -> Result<Response> {
+    if let Some(provider_id) = params
+        .ai_provider
+        .as_deref()
+        .filter(|id| !id.trim().is_empty())
+    {
+        crate::services::ai::AiConfig::from_context(&ctx)?.provider(provider_id)?;
+    }
     let user = users::Model::find_by_pid(&ctx.db, &auth.claims.pid).await?;
     let item = load_item_by_pid(&ctx, &pid).await?;
     require_owner(&ctx, user.id, item.id).await?;
@@ -321,6 +336,7 @@ pub async fn user_stats(auth: auth::JWT, State(ctx): State<AppContext>) -> Resul
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AiTestPromptParams {
     pub prompt: String,
+    pub provider: Option<String>,
     pub model: Option<String>,
     pub system_prompt: Option<String>,
 }
@@ -340,27 +356,44 @@ pub async fn test_ai(
     let project = load_item_by_pid(&ctx, &pid).await?;
     require_member(&ctx, user.id, project.id).await?;
 
-    let settings = crate::models::user_settings::Model::get_or_default(&ctx.db, user.id).await?;
+    let ai_config = crate::services::ai::AiConfig::from_context(&ctx)?;
+    let requested_provider = params
+        .provider
+        .filter(|provider| !provider.trim().is_empty());
+    let provider_id = requested_provider
+        .clone()
+        .or_else(|| project.ai_provider.clone())
+        .unwrap_or_else(|| ai_config.default_provider.clone());
+    let provider = ai_config.provider(&provider_id)?;
+
+    let project_model = if requested_provider
+        .as_ref()
+        .is_some_and(|requested| project.ai_provider.as_deref() != Some(requested.as_str()))
+    {
+        None
+    } else {
+        project.ai_model
+    };
 
     let model = params
         .model
         .filter(|m| !m.trim().is_empty())
-        .or(project.ai_model)
-        .or(settings.default_model)
-        .unwrap_or_else(|| "llama3.2".to_string());
+        .or(project_model)
+        .or_else(|| provider.default_model.clone())
+        .ok_or_else(|| {
+            Error::BadRequest(format!(
+                "No model configured for AI provider: {}",
+                provider.id
+            ))
+        })?;
 
     let system = params
         .system_prompt
         .filter(|s| !s.trim().is_empty())
         .or(project.ai_system_prompt);
 
-    let result = crate::services::ollama::generate(
-        &settings.ollama_url,
-        model,
-        &params.prompt,
-        system.as_deref(),
-    )
-    .await?;
+    let result =
+        crate::services::ai::generate(provider, model, &params.prompt, system.as_deref()).await?;
 
     format::json(result)
 }

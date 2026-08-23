@@ -52,6 +52,24 @@ listening on http://localhost:5150
 
 You can check your [configuration](config/development.yaml) to pick either frontend setup or server-side rendered template, and activate the relevant configuration sections.
 
+## AI providers
+
+AI providers are configured once per app instance under `settings.ai`; browser clients and individual users cannot supply provider endpoints.
+
+```yaml
+settings:
+  ai:
+    default_provider: ollama
+    providers:
+      - id: ollama
+        name: Local Ollama
+        kind: ollama
+        base_url: http://host.docker.internal:11434
+        default_model: qwen3.8:27b
+```
+
+Projects store the provider `id`, an optional model override, and their own system prompt. Multiple Ollama instances can already be configured by adding entries with distinct IDs. Additional provider kinds are added as backend adapters without changing projects or the frontend response format.
+
 
 ## Getting help
 

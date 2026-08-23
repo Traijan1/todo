@@ -66,7 +66,7 @@ export const useProjectStore = defineStore("projects", () => {
     return response.data;
   }
 
-  async function testProjectAi(pid: string, payload: { prompt: string; model?: string; system_prompt?: string }) {
+  async function testProjectAi(pid: string, payload: { prompt: string; provider?: string; model?: string; system_prompt?: string }) {
     const response = await api.post(`/projects/${pid}/test-ai`, payload);
     return response.data;
   }

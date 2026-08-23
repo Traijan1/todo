@@ -105,3 +105,13 @@ auth:
     secret: ej0TNuTmVUvHSp09f8MI
     # Token expiration time in seconds
     expiration: 604800 # 7 days
+
+settings:
+  ai:
+    default_provider: ollama
+    providers:
+      - id: ollama
+        name: Lokales Ollama
+        kind: ollama
+        base_url: http://localhost:11434
+        default_model: llama3.2

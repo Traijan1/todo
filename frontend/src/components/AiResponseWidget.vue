@@ -5,6 +5,7 @@ const props = withDefaults(
   defineProps<{
     response: string;
     thinking?: string | null;
+    provider?: string | null;
     model?: string | null;
     durationMs?: number | null;
     title?: string;
@@ -14,6 +15,7 @@ const props = withDefaults(
   }>(),
   {
     thinking: null,
+    provider: null,
     model: null,
     durationMs: null,
     title: "AI-Antwort",
@@ -44,6 +46,12 @@ const copy = async (kind: "thinking" | "response") => {
       <div class="flex min-w-0 flex-1 flex-wrap items-center gap-2">
         <span class="shrink-0 text-[10px] font-black uppercase tracking-wider text-brand-primary">
           {{ props.title }}
+        </span>
+        <span
+          v-if="props.provider"
+          class="shrink-0 rounded-md bg-white/5 px-2 py-0.5 font-mono text-[10px] text-brand-text-muted"
+        >
+          {{ props.provider }}
         </span>
         <span
           v-if="props.model"
